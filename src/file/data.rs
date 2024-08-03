@@ -2,11 +2,13 @@ use std::{path::PathBuf, io::{BufReader, BufWriter}, fs::File};
 
 use crate::basics::row::Row;
 
+#[derive(Debug)]
 pub enum LoadMode {
     Memory,
     Disk,
 }
 
+#[derive(Debug)]
 pub struct Data {
     pub rows: Vec<Row>,
     pub reader: BufReader<File>,

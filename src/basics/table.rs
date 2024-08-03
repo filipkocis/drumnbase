@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use crate::{basics::column::Column, file::data::Data};
 
+#[derive(Debug)]
 pub struct Table {
     pub name: String,
     pub columns: Vec<Column>,

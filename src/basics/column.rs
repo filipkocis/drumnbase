@@ -1,9 +1,11 @@
+#[derive(Debug)]
 pub enum TextType {
     Char,
     Variable,
     Fixed(u32),
 }
 
+#[derive(Debug)]
 pub enum NumericType {
     IntU8,
     IntU16,
@@ -19,6 +21,7 @@ pub enum NumericType {
     Float64,
 }
 
+#[derive(Debug)]
 pub enum TimestampType {
     Date,
     Time,
@@ -27,6 +30,7 @@ pub enum TimestampType {
 }
 
 
+#[derive(Debug)]
 pub enum ColumnType {
     Numeric(NumericType),
     Text(TextType),
@@ -38,6 +42,7 @@ pub enum ColumnType {
     UUID,
 }
 
+#[derive(Debug)]
 pub struct Column {
     pub name: String,
     pub data_type: ColumnType,

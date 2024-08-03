@@ -1,5 +1,6 @@
 use crate::basics::{table::Table, column::Column};
 
+#[derive(Debug)]
 pub struct Schema {
     pub root_dir: String,
     pub tables: Vec<Table>,
@@ -14,7 +15,8 @@ impl Schema {
     }
 
     pub fn add_table(&mut self, name: &str) {
-        let table = Table::new(name);
+        let path = format!("{}/tables/{}.quack", self.root_dir, name);
+        let table = Table::new(&path);
 
         self.tables.push(table);
     }

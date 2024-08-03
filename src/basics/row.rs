@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum NumericValue {
     IntU8(u8),
     IntU16(u16),
@@ -14,6 +15,7 @@ pub enum NumericValue {
 
 }
 
+#[derive(Debug)]
 pub enum Value {
     Text(String),
     Numeric(NumericValue),
@@ -25,6 +27,7 @@ pub enum Value {
     UUID(String),
 }
 
+#[derive(Debug)]
 pub struct Row {
     pub values: Vec<Value>,
 }
