@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{BufReader, BufWriter}, fs::File};
 
-use crate::basics::row::Row;
+use crate::{basics::row::Row, utils::log};
 
 #[derive(Debug)]
 pub enum LoadMode {
@@ -21,6 +21,8 @@ pub struct Data {
 impl Data {
     pub fn load(&mut self, path: PathBuf) {
         if self.loaded { return }
+
+        log::info(format!("loading data from '{}'", path.display()));
 
         let writer_file = File::options().write(true).create(true).open(&path).unwrap();
         let reader_file = File::options().read(true).open(&path).unwrap();
