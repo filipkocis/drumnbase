@@ -180,6 +180,8 @@ impl Parser for SimpleParser {
     }
 
     fn parse_file(file: &str) -> Result<Schema, String> {
+        log::info(format!("Parsing schema '{}'", file));
+
         match fs::read_to_string(file) {
             Ok(v) => Self::parse(&v),
             Err(e) => {
