@@ -29,8 +29,8 @@ impl Schema {
         self.tables.retain(|table| table.name != name);
 
         // remove file because adding a table create the file (bufreader and bufwriter)
-        let path = format!("{}/tables/{}.quack", self.root_dir, name);
-        let _ = std::fs::remove_file(path);
+        // let path = format!("{}/tables/{}.quack", self.root_dir, name);
+        // let _ = std::fs::remove_file(path);
     }
 
     pub fn get_table(&mut self, name: &str) -> Option<&mut Table> {
@@ -50,6 +50,7 @@ impl Default for Schema {
     fn default() -> Self {
         Schema {
             root_dir: String::new(),
+            database_name: String::new(),
             tables: Vec::new(),
         }
     }
