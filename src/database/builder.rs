@@ -126,13 +126,13 @@ impl DatabaseBuilder {
             return Err(err_msg);
         }
 
-        disk::create_directory_all(&database_path);
-        disk::create_directory(&Table::path(&database_path));
-        disk::copy_file(schema_path, &new_schema_path);
+        disk::create_directory_all(&database_path)?;
+        disk::create_directory(&Table::path(&database_path))?;
+        disk::copy_file(schema_path, &new_schema_path)?;
 
         for table in Schema::load_from_file(&new_schema_path)?.tables {
             let table_path = Table::path_for(&database_path, &table.name);
-            disk::create_file(&table_path);
+            disk::create_file(&table_path)?;
         }
 
         log::success(format!("created database '{}'", self.name));
