@@ -1,26 +1,29 @@
+use crate::basics::table::Table;
 use crate::database::Database;
 use crate::utils::{disk, log};
 use crate::parser::Schema;
 
 impl Database {
+    pub fn from_schema(name: &str, root_dir: &str, schema: Schema) -> Self {
+        Database {
+            name: name.to_string(),
+            tables: schema.tables,
+            root_dir: root_dir.to_string(),
+        }
+    }
+
     pub fn new_from_schema(schema: Schema) -> Self {
         log::info(format!("loading database '{}' from schema", schema.database_name));
 
-        let mut database = Database {
+        let database = Database {
             name: schema.database_name,
             tables: schema.tables,
             root_dir: schema.root_dir,
         };
 
         database.create_files();
-        database.load_tables();
 
         database
-    }
-
-    fn load_tables(&mut self) {
-        let path = format!("{}/tables", self.path());
-        self.tables.iter_mut().for_each(|table| table.load(&path))
     }
 
     fn create_files(&self) {
