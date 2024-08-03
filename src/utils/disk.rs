@@ -2,6 +2,14 @@ use std::fs;
 
 use crate::utils::log;
 
+pub fn copy_file(from: &str, to: &str) {
+    let result = fs::copy(from, to);
+    match result {
+        Ok(_) => log::info(format!("copied file '{}' to '{}'", from, to)), 
+        Err(e) => log::error(format!("failed to copy file '{}' to '{}'\n{}", from, to, e))
+    }
+}
+
 pub fn create_directory(path: &str) {
     let result = fs::create_dir(path);
     match result {
