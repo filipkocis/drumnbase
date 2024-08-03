@@ -1,5 +1,7 @@
 use crate::basics::{table::Table, column::Column};
 
+use super::{SimpleParser, Parser};
+
 #[derive(Debug)]
 pub struct Schema {
     pub root_dir: String,
@@ -8,16 +10,8 @@ pub struct Schema {
 }
 
 impl Schema {
-    // pub fn new(root_dir: String) -> Schema {
-    //     Schema {
-    //         root_dir,
-    //         database_name: String::new(),
-    //         tables: Vec::new(),
-    //     }
-    // }
-
-    pub fn get_table_path(&self, table_name: &str) -> String {
-        format!("{}/{}/tables/{}.quack", self.root_dir, self.database_name, table_name)
+    pub fn path(database_path: &str) -> String {
+        format!("{}/schema.bob", database_path)
     }
 
     pub fn add_table(&mut self, name: &str) {
@@ -43,6 +37,14 @@ impl Schema {
                 .iter_mut()
                 .find(|column| column.name == column_name)
             )
+    }
+
+    pub fn load_from_file(path: &str) -> Result<Schema, String> {
+        SimpleParser::parse_file(path)
+    }
+
+    pub fn load_from_text(text: &str) -> Result<Schema, String> {
+        SimpleParser::parse(text)
     }
 }
 
