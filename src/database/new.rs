@@ -1,4 +1,3 @@
-use crate::basics::table::Table;
 use crate::database::Database;
 use crate::utils::{disk, log};
 use crate::parser::Schema;
@@ -10,20 +9,6 @@ impl Database {
             tables: schema.tables,
             root_dir: root_dir.to_string(),
         }
-    }
-
-    pub fn new_from_schema(schema: Schema) -> Self {
-        log::info(format!("loading database '{}' from schema", schema.database_name));
-
-        let database = Database {
-            name: schema.database_name,
-            tables: schema.tables,
-            root_dir: schema.root_dir,
-        };
-
-        database.create_files();
-
-        database
     }
 
     fn create_files(&self) {

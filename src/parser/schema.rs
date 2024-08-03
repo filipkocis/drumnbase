@@ -4,8 +4,6 @@ use super::{SimpleParser, Parser};
 
 #[derive(Debug)]
 pub struct Schema {
-    pub root_dir: String,
-    pub database_name: String,
     pub tables: Vec<Table>,
 }
 
@@ -51,8 +49,6 @@ impl Schema {
 impl Default for Schema {
     fn default() -> Self {
         Schema {
-            root_dir: String::new(),
-            database_name: String::new(),
             tables: Vec::new(),
         }
     }
