@@ -85,7 +85,7 @@ impl DatabaseBuilder {
             }
         });
 
-        if missing_files { 
+        if !missing_files { 
             Ok(()) 
         } else { 
             let err_msg = format!("file check failed, schema doesn't match");
@@ -106,8 +106,7 @@ impl DatabaseBuilder {
          
         self.check_schema_files(&schema)?;
 
-        let tables_path = Table::path(&database_path);
-        schema.tables.iter_mut().for_each(|table| table.load(&tables_path));
+        schema.tables.iter_mut().for_each(|table| table.load(&database_path));
 
         let database = Database::from_schema(&self.name, &self.root_dir, schema);
 

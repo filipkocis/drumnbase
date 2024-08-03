@@ -43,9 +43,9 @@ impl Table {
         self.columns.iter().find(|column| column.name == column_name)
     }
 
-    pub fn load(&mut self, tables_path: &str) {
+    pub fn load(&mut self, database_path: &str) {
         log::info(format!("loading table '{}'", self.name));
-        let table_path = Table::path_for(tables_path, &self.name);
+        let table_path = Table::path_for(database_path, &self.name);
         let path_buf = PathBuf::from(table_path);
         self.data.load(path_buf);
     }
