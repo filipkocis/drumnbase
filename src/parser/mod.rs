@@ -1,5 +1,5 @@
 mod parser;
 mod schema;
 
-pub use parser::Parser; 
+pub use parser::*; 
 pub use schema::Schema; 
