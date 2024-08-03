@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use crate::{basics::column::Column, file::data::Data};
 
 #[derive(Debug)]
@@ -18,15 +16,11 @@ pub struct Table {
 }
 
 impl Table {
-    pub fn new(path: &str) -> Table {
-        let path = PathBuf::from(path);
-
-        Table {
-            name: path.file_stem().unwrap().to_str().unwrap().to_owned(),
-            columns: Vec::new(),
-            data: Data::new(path),
-            read_only: false,
-        }
+    pub fn new(name: &str) -> Table {
+        let mut table = Table::default();
+        table.name = name.to_string();
+        
+        table
     }
 
     pub fn get_column_mut(&mut self, column_name: &str) -> Option<&mut Column> {
@@ -35,5 +29,16 @@ impl Table {
 
     pub fn get_column(&self, column_name: &str) -> Option<&Column> {
         self.columns.iter().find(|column| column.name == column_name)
+    }
+}
+
+impl Default for Table {
+    fn default() -> Self {
+        Table {
+            name: String::new(),
+            columns: Vec::new(),
+            data: Data::default(),
+            read_only: false,
+        }
     }
 }
