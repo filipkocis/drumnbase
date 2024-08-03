@@ -158,7 +158,12 @@ impl SimpleParser {
         if args.len() != 1 { return Err("root_dir value not provided".to_string()) }
         schema.root_dir = args_parts[0].to_string();
 
-        fs::create_dir_all(&format!("{}/tables", schema.root_dir)).unwrap();
+        Ok(())
+    }
+
+    fn handle_database_name(schema: &mut Schema, args: &Vec<String>, args_parts:  &[&str]) -> Result<(), String> {
+        if args.len() != 1 { return Err("database_name value not provided".to_string()) }
+        schema.database_name = args_parts[0].to_string();
 
         Ok(())
     }
@@ -178,16 +183,17 @@ impl Parser for SimpleParser {
             let args_parts = &parts[1..];
             let args: Vec<String> = args_parts.iter().map(|s| s.to_string().to_lowercase()).collect();
 
-
-
             match command.as_str() {
                 "root_dir" => Self::handle_root_dir(&mut schema, &args, args_parts)?,
+                "database_name" => Self::handle_database_name(&mut schema, &args, args_parts)?,
                 "table" => Self::handle_table(&mut schema, &args, args_parts)?,
 
                 _ => return Err(format!("Unknown command: {}", command))
             }
-
         }
+
+        if schema.root_dir.is_empty() { return Err("root_dir not provided".to_string()) }
+        if schema.database_name.is_empty() { return Err("database_name not provided".to_string()) }
         
         Ok(schema)
     }
