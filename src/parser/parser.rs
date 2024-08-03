@@ -10,18 +10,39 @@ pub trait Parser {
 pub struct SimpleParser;
 
 impl SimpleParser {
-    fn parse_new_column(column_name: &str, column_type: &str) -> Result<Column, String> {
-        
+    fn parse_new_column(column_name: &str, column_type: &str, args: &[&str]) -> Result<Column, String> {
+        let column = Column::new(column_name, column_type);
 
-        todo!()
+        for &arg in args {
+            let parts: Vec<&str> = arg.split("=").collect();
+
+            match arg {
+                "length" => {
+                    if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
+                    column.length = parts[1].parse().unwrap();
+                },
+                "default" => {
+                    if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
+                    column.default = parts[1].to_string();
+                },
+                "not_null" => column.not_null = true,
+                "unique" => column.unique = true,
+                "read_only" => column.read_only = true,
+
+                "add" => continue, // ignore this, needed to prevent errors in the caller function
+                _ => return Err(format!("Unknown new column property {}", arg).to_string())
+            }
+        }
+
+        Ok(column)
     }
+
     fn handle_table_column(schema: &mut Schema, args: &Vec<String>, args_parts: &[&str]) -> Result<(), String> {
+        if args.len() < 4 { return Err("Invalid table column command arguments".to_string()) }
 
         let table_name = args_parts[0];
         let prop = args[2].as_str();
         let column_name = args_parts[3];
-        let column_type = args[4].as_str();
-        let column_type_parts = args[4].as_str();
 
         let table = schema.get_table(table_name)
             .ok_or(format!("Table not found: {}", table_name))?;
@@ -29,7 +50,10 @@ impl SimpleParser {
         match prop {
             "remove" => table.columns.retain(|c| c.name != column_name),
             "add" => {
-                let column = Self::parse_new_column(column_name, column_type)?;
+                if args.len() < 5 { return Err("Invalid table column add command arguments".to_string()) }
+                let column_args = &args[4..].iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+                let column_type = args[4].as_str();
+                let column = Self::parse_new_column(column_name, column_type, &column_args)?;
                 table.columns.push(column)
             }
 
