@@ -1,6 +1,10 @@
 use std::fs;
 
-use crate::{parser::Schema, file::data::LoadMode, basics::column::{Column, ColumnType, NumericType, TextType}};
+use crate::{
+    parser::Schema, 
+    file::data::LoadMode, 
+    basics::column::{Column, ColumnType, NumericType, TextType}
+};
 
 pub trait Parser {
     fn parse(input: &str) -> Result<Schema, String>;
@@ -51,20 +55,29 @@ impl SimpleParser {
         for &arg in args {
             let parts: Vec<&str> = arg.split("=").collect();
 
-            match arg {
+            match parts[0] {
                 "length" => {
                     if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
                     column.length = parts[1].parse().unwrap();
                 },
                 "default" => {
                     if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
-                    column.default = parts[1].to_string();
+                    let default_value = parts[1];
+
+                    match column.data_type {
+                        ColumnType::Numeric(_) => {
+                            if default_value.parse::<f64>().is_err() {
+                                return Err(format!("Invalid default value for numeric column: {}", default_value));
+                            };
+                        },
+                        _ => { }
+                    };
+                    column.default = default_value.to_string();
                 },
                 "not_null" => column.not_null = true,
                 "unique" => column.unique = true,
                 "read_only" => column.read_only = true,
 
-                "add" => continue, // ignore this, needed to prevent errors in the caller function
                 _ => return Err(format!("Unknown new column property {}", arg).to_string())
             }
         }
@@ -72,27 +85,29 @@ impl SimpleParser {
         Ok(column)
     }
 
+    /// table <table_name> column <column_name> <column_command> <column_type> [column_args...]
     fn handle_table_column(schema: &mut Schema, args: &Vec<String>, args_parts: &[&str]) -> Result<(), String> {
         if args.len() < 4 { return Err("Invalid table column command arguments".to_string()) }
 
         let table_name = args_parts[0];
-        let prop = args[2].as_str();
-        let column_name = args_parts[3];
+        let column_name = args_parts[2];
+        let command = args[3].as_str();
 
         let table = schema.get_table(table_name)
             .ok_or(format!("Table not found: {}", table_name))?;
 
-        match prop {
-            "remove" => table.columns.retain(|c| c.name != column_name),
+        match command {
+            "delete" => table.columns.retain(|c| c.name != column_name),
             "add" => {
                 if args.len() < 5 { return Err("Invalid table column add command arguments".to_string()) }
-                let column_args = &args[4..].iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+                let column_args = &mut args[4..].iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+                column_args.remove(0);
                 let column_type = args[4].as_str();
                 let column = Self::parse_new_column(column_name, column_type, &column_args)?;
                 table.columns.push(column)
             }
 
-            _ => return Err(format!("Unknown column command: {}", prop))
+            _ => return Err(format!("Unknown column command: {}", command))
         }
 
         Ok(())
@@ -143,6 +158,8 @@ impl SimpleParser {
         if args.len() != 1 { return Err("root_dir value not provided".to_string()) }
         schema.root_dir = args_parts[0].to_string();
 
+        fs::create_dir_all(&format!("{}/tables", schema.root_dir)).unwrap();
+
         Ok(())
     }
 }
@@ -154,6 +171,7 @@ impl Parser for SimpleParser {
         for line in input.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() == 0 { continue }
+            if parts.len() < 2 { return Err(format!("Invalid command: {}", line).to_string()) }
 
             let command = String::from(parts[0]).to_lowercase();
             let args_parts = &parts[1..];
@@ -170,7 +188,7 @@ impl Parser for SimpleParser {
 
         }
         
-        todo!()
+        Ok(schema)
     }
 
     fn parse_file(file: &str) -> Result<Schema, String> {
