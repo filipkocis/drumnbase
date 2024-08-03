@@ -2,36 +2,56 @@ use std::fs;
 
 use crate::utils::log;
 
-pub fn copy_file(from: &str, to: &str) {
+pub fn copy_file(from: &str, to: &str) -> Result<(), String> {
     let result = fs::copy(from, to);
-    match result {
-        Ok(_) => log::info(format!("copied file '{}' to '{}'", from, to)), 
-        Err(e) => log::error(format!("failed to copy file '{}' to '{}'\n{}", from, to, e))
+
+    if let Err(e) = result {
+        let err_msg = format!("failed to copy file '{}' to '{}'\n{}", from, to, e);
+        log::error(&err_msg);
+        return Err(err_msg);
     }
+
+    log::info(format!("copied file '{}' to '{}'", from, to)); 
+    Ok(())
 }
 
-pub fn create_directory(path: &str) {
+pub fn create_directory(path: &str) -> Result<(), String> {
     let result = fs::create_dir(path);
-    match result {
-        Ok(_) => log::info(format!("created dir {}", path)), 
-        Err(e) => log::error(format!("failed to create dir {}\n{}", path, e))
+    
+    if let Err(e) = result {
+        let err_msg = format!("failed to create dir {}\n{}", path, e);
+        log::error(&err_msg);
+        return Err(err_msg);
     }
+
+    log::info(format!("created dir {}", path)); 
+    Ok(())
 }
 
-pub fn create_directory_all(path: &str) {
+pub fn create_directory_all(path: &str) -> Result<(), String> {
     let result = fs::create_dir_all(path);
-    match result {
-        Ok(_) => log::info(format!("created dir path {}", path)), 
-        Err(e) => log::error(format!("failed to create dir path {}\n{}", path, e))
+
+    if let Err(e) = result {
+        let err_msg = format!("failed to create dir path {}\n{}", path, e);
+        log::error(&err_msg);
+        return Err(err_msg);
     }
+
+    log::info(format!("created dir path {}", path)); 
+    Ok(())
 }
 
-pub fn create_file(path: &str) {
+pub fn create_file(path: &str) -> Result<(), String> {
     let result = std::fs::OpenOptions::new().write(true).create_new(true).open(path);
-    match result {
-        Ok(_) => log::info(format!("created file {}", path)), 
-        Err(e) => log::error(format!("failed to create file {}\n{}", path, e))
+
+    if let Err(e) = result {
+        let err_msg = format!("failed to create file {}\n{}", path, e);
+        log::error(&err_msg);
+        return Err(err_msg);
     }
+
+    log::info(format!("created file {}", path)); 
+    Ok(())
 }
 
 pub fn get_entires(path: &str) {
