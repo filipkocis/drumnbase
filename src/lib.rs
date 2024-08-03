@@ -1,4 +1,4 @@
-// mod database;
+pub mod database;
 pub mod basics;
 pub mod file;
 pub mod utils;
