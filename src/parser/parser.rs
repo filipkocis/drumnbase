@@ -3,7 +3,7 @@ use std::fs;
 use crate::{
     parser::Schema, 
     file::data::LoadMode, 
-    basics::column::{Column, ColumnType, NumericType, TextType}
+    basics::column::{Column, ColumnType, NumericType, TextType}, utils::log
 };
 
 pub trait Parser {
@@ -199,10 +199,12 @@ impl Parser for SimpleParser {
     }
 
     fn parse_file(file: &str) -> Result<Schema, String> {
-        if let Ok(str) = fs::read_to_string(file) {
-            return Self::parse(&str);
-        } else {
-            return Err("Could not read file".to_string())
+        match fs::read_to_string(file) {
+            Ok(v) => Self::parse(&v),
+            Err(e) => {
+                log::error(format!("failed to read file {}\n{}", file, e));
+                Err(e.to_string())
+            }
         }
     }
 }
