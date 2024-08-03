@@ -110,6 +110,32 @@ impl DatabaseBuilder {
 
         let database = Database::from_schema(&self.name, &self.root_dir, schema);
 
+        log::success(format!("loaded database '{}'", self.name));
         Ok(database)
+    }
+
+    pub fn create(&self, schema_path: &str) -> Result<Database, String> {
+        log::info(format!("creating database '{}' from schema '{}'", self.name, schema_path));
+
+        let database_path = self.path()?;
+        let new_schema_path = Schema::path(&database_path);
+
+        if disk::exists(&database_path) {
+            let err_msg = format!("database '{}' already exists", self.name);
+            log::error(&err_msg);
+            return Err(err_msg);
+        }
+
+        disk::create_directory_all(&database_path);
+        disk::create_directory(&Table::path(&database_path));
+        disk::copy_file(schema_path, &new_schema_path);
+
+        for table in Schema::load_from_file(&new_schema_path)?.tables {
+            let table_path = Table::path_for(&database_path, &table.name);
+            disk::create_file(&table_path);
+        }
+
+        log::success(format!("created database '{}'", self.name));
+        self.load()
     }
 }
