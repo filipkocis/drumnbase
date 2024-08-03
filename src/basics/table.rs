@@ -1,4 +1,6 @@
-use crate::{basics::column::Column, file::data::Data};
+use std::path::PathBuf;
+
+use crate::{basics::column::Column, file::data::Data, utils::log};
 
 #[derive(Debug)]
 pub struct Table {
@@ -29,6 +31,13 @@ impl Table {
 
     pub fn get_column(&self, column_name: &str) -> Option<&Column> {
         self.columns.iter().find(|column| column.name == column_name)
+    }
+
+    pub fn load(&mut self, path: &str) {
+        log::info(format!("loading table '{}'", self.name));
+        let path = format!("{}/{}.quack", path, self.name);
+        let path = PathBuf::from(path);
+        self.data.load(path);
     }
 }
 
