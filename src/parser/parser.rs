@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::{parser::Schema, file::data::LoadMode, basics::column::Column};
+use crate::{parser::Schema, file::data::LoadMode, basics::column::{Column, ColumnType, NumericType, TextType}};
 
 pub trait Parser {
     fn parse(input: &str) -> Result<Schema, String>;
@@ -10,8 +10,43 @@ pub trait Parser {
 pub struct SimpleParser;
 
 impl SimpleParser {
-    fn parse_new_column(column_name: &str, column_type: &str, args: &[&str]) -> Result<Column, String> {
-        let column = Column::new(column_name, column_type);
+    fn parse_new_column(column_name: &str, column_type_str: &str, args: &[&str]) -> Result<Column, String> {
+        let column_type = match column_type_str {
+            "int_u8" => ColumnType::Numeric(NumericType::IntU8),
+            "int_u16" => ColumnType::Numeric(NumericType::IntU16),
+            "int_u32" => ColumnType::Numeric(NumericType::IntU32),
+            "int_u64" => ColumnType::Numeric(NumericType::IntU64),
+
+            "int_i8" => ColumnType::Numeric(NumericType::IntI8),
+            "int_i16" => ColumnType::Numeric(NumericType::IntI16),
+            "int_i32" => ColumnType::Numeric(NumericType::IntI32),
+            "int_i64" => ColumnType::Numeric(NumericType::IntI64),
+
+            "float_32" => ColumnType::Numeric(NumericType::Float32),
+            "float_64" => ColumnType::Numeric(NumericType::Float64),
+            
+            "char" => ColumnType::Text(TextType::Char),
+            "variable" => ColumnType::Text(TextType::Variable),
+            s if s.starts_with("fixed") => {
+                let mut fixed_length = 255;
+
+                if s.starts_with("fixed(") && s.ends_with(")") {
+                    if let Some(val) = s.strip_prefix("fixed(").unwrap().strip_suffix(")") {
+                        fixed_length = val.parse().unwrap();        
+                    } else {
+                        return Err(format!("Invalid fixed column type length: {}", s).to_string())
+                    }
+                } else if s != "fixed" {
+                    return Err(format!("Invalid column type syntax: {}", s).to_string())
+                }
+
+                ColumnType::Text(TextType::Fixed(fixed_length))
+            },
+
+            _ => return Err(format!("unknown column type: {}", column_type_str).to_string())
+        };
+
+        let mut column = Column::new(column_name, column_type);
 
         for &arg in args {
             let parts: Vec<&str> = arg.split("=").collect();
