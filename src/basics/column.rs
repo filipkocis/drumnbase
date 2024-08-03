@@ -53,3 +53,17 @@ pub struct Column {
     // pub check_constraint: String,
     // pub privileges: Vec<Privilege>,
 }
+
+impl Column {
+    pub fn new(name: &str, data_type: ColumnType) -> Self {
+        Column {
+            name: name.to_owned(),
+            data_type,
+            length: 0,
+            default: String::new(),
+            not_null: false,
+            unique: false,
+            read_only: false,
+        }
+    }
+}
