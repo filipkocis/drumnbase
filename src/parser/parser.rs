@@ -171,6 +171,7 @@ impl Parser for SimpleParser {
         for line in input.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() == 0 { continue }
+            if parts[0].starts_with("#") { continue }
             if parts.len() < 2 { return Err(format!("Invalid command: {}", line).to_string()) }
 
             let command = String::from(parts[0]).to_lowercase();
