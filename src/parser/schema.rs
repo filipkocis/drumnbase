@@ -23,6 +23,10 @@ impl Schema {
 
     pub fn delete_table(&mut self, name: &str) {
         self.tables.retain(|table| table.name != name);
+
+        // remove file because adding a table create the file (bufreader and bufwriter)
+        let path = format!("{}/tables/{}.quack", self.root_dir, name);
+        let _ = std::fs::remove_file(path);
     }
 
     pub fn get_table(&mut self, name: &str) -> Option<&mut Table> {
