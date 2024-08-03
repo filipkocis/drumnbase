@@ -3,21 +3,25 @@ use crate::basics::{table::Table, column::Column};
 #[derive(Debug)]
 pub struct Schema {
     pub root_dir: String,
+    pub database_name: String,
     pub tables: Vec<Table>,
 }
 
 impl Schema {
-    pub fn new(root_dir: String) -> Schema {
-        Schema {
-            root_dir,
-            tables: Vec::new(),
-        }
+    // pub fn new(root_dir: String) -> Schema {
+    //     Schema {
+    //         root_dir,
+    //         database_name: String::new(),
+    //         tables: Vec::new(),
+    //     }
+    // }
+
+    pub fn get_table_path(&self, table_name: &str) -> String {
+        format!("{}/{}/tables/{}.quack", self.root_dir, self.database_name, table_name)
     }
 
     pub fn add_table(&mut self, name: &str) {
-        let path = format!("{}/tables/{}.quack", self.root_dir, name);
-        let table = Table::new(&path);
-
+        let table = Table::new(name);
         self.tables.push(table);
     }
 
