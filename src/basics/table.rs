@@ -25,6 +25,16 @@ impl Table {
         table
     }
 
+    /// returns the path to the tables directory
+    pub fn path(database_path: &str) -> String {
+        format!("{}/tables", database_path)
+    }
+
+    /// returns the path to the table file
+    pub fn path_for(database_path: &str, table_name: &str) -> String {
+        format!("{}/{}.quack", Table::path(database_path), table_name)
+    }
+
     pub fn get_column_mut(&mut self, column_name: &str) -> Option<&mut Column> {
         self.columns.iter_mut().find(|column| column.name == column_name)
     }
@@ -33,11 +43,11 @@ impl Table {
         self.columns.iter().find(|column| column.name == column_name)
     }
 
-    pub fn load(&mut self, path: &str) {
+    pub fn load(&mut self, tables_path: &str) {
         log::info(format!("loading table '{}'", self.name));
-        let path = format!("{}/{}.quack", path, self.name);
-        let path = PathBuf::from(path);
-        self.data.load(path);
+        let table_path = Table::path_for(tables_path, &self.name);
+        let path_buf = PathBuf::from(table_path);
+        self.data.load(path_buf);
     }
 }
 
