@@ -12,9 +12,15 @@ impl Schema {
         format!("{}/schema.bob", database_path)
     }
 
-    pub fn add_table(&mut self, name: &str) {
+    pub fn add_table(&mut self, name: &str) -> Result<(), String> {
+        if self.tables.iter().any(|table| table.name == name) {
+            return Err(format!("Table already exists: {}", name))
+        }
+
         let table = Table::new(name);
         self.tables.push(table);
+
+        Ok(())
     }
 
     pub fn delete_table(&mut self, name: &str) {
