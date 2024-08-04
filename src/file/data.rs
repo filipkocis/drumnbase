@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{BufReader, BufWriter, Write}, fs::File};
 
-use crate::{basics::row::Row, utils::log};
+use crate::{basics::{row::{Row, ToBytes}, column::Column}, utils::log};
 
 #[derive(Debug)]
 pub enum LoadMode {
@@ -59,7 +59,7 @@ impl Data {
 }
 
 impl Data {
-    pub fn write_memory(&mut self) -> Result<(), String> {
+    pub fn write_memory(&mut self, columns: &Vec<Column>) -> Result<(), String> {
         if self.buf_rows.len() == 0 { return Ok(()) }
         if !self.loaded { return Err("data not loaded".to_string()) }
 
@@ -67,18 +67,22 @@ impl Data {
             self.rows.push(r.clone())
         });
 
-        self.write_disk()
+        self.write_disk(columns)
     }
 
-    pub fn write_disk(&mut self) -> Result<(), String> {
+    pub fn write_disk(&mut self, columns: &Vec<Column>) -> Result<(), String> {
         if self.buf_rows.len() == 0 { return Ok(()) }
         if !self.loaded { return Err("data not loaded".to_string()) }
 
         let writer = self.writer.as_mut().unwrap();
 
         for i in 0..self.buf_rows.len() {
-            let buf_row = self.buf_rows[i].to_string() + "\n";
-            writer.write_all(buf_row.as_bytes()).unwrap();
+            let length = columns[i].length; 
+
+            let mut buf = self.buf_rows[i].to_bytes(length); 
+            buf.push(b'\n');
+
+            writer.write_all(&buf).unwrap();
         }
         self.buf_rows.clear();
 
