@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use super::column::Column;
+
 impl ToString for Row {
     fn to_string(&self) -> String {
         self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" | ")
@@ -118,16 +120,18 @@ impl Row {
     pub fn iter(&self) -> std::slice::Iter<Value> {
         self.values.iter()
     }
-}
 
-pub trait ToBytes {
-    fn to_bytes(&self, length: u32) -> Vec<u8>;
-}
+    pub fn convert_to_bytes(&self, columns: &Vec<Column>) -> Vec<u8> {
 
-impl ToBytes for Row {
-    fn to_bytes(&self, length: u32) -> Vec<u8> {
-        self.values.iter().flat_map(|v| v.to_bytes(length)).collect()
+        self.values.iter().enumerate().flat_map(|(i, v)| {
+            let length = columns[i].length;
+            v.to_bytes(length)
+        }).collect()
     }
+}
+
+trait ToBytes {
+    fn to_bytes(&self, length: u32) -> Vec<u8>;
 }
 
 impl ToBytes for Value {

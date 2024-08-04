@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{BufReader, BufWriter, Write}, fs::File};
 
-use crate::{basics::{row::{Row, ToBytes}, column::Column}, utils::log};
+use crate::{basics::{row::{Row}, column::Column}, utils::log};
 
 #[derive(Debug)]
 pub enum LoadMode {
@@ -77,9 +77,7 @@ impl Data {
         let writer = self.writer.as_mut().unwrap();
 
         for i in 0..self.buf_rows.len() {
-            let length = columns[i].length; 
-
-            let mut buf = self.buf_rows[i].to_bytes(length); 
+            let mut buf = self.buf_rows[i].convert_to_bytes(columns); 
             buf.push(b'\n');
 
             writer.write_all(&buf).unwrap();
