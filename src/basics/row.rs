@@ -1,3 +1,39 @@
+use std::fmt::Display;
+
+impl Display for NumericValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NumericValue::IntI8(n) => write!(f, "{}", n),
+            NumericValue::IntI16(n) => write!(f, "{}", n),
+            NumericValue::IntI32(n) => write!(f, "{}", n),
+            NumericValue::IntI64(n) => write!(f, "{}", n),
+            NumericValue::IntU8(n) => write!(f, "{}", n),
+            NumericValue::IntU16(n) => write!(f, "{}", n),
+            NumericValue::IntU32(n) => write!(f, "{}", n),
+            NumericValue::IntU64(n) => write!(f, "{}", n),
+            NumericValue::Float32(n) => write!(f, "{}", n),
+            NumericValue::Float64(n) => write!(f, "{}", n),
+        }
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Text(s) => write!(f, "{}", s),
+            Value::Numeric(n) => write!(f, "{}", n),
+            Value::Timestamp(s) => write!(f, "{}", s),
+            Value::Boolean(s) => write!(f, "{}", s),
+            Value::Binary(s) => write!(f, "{:?}", s),
+            Value::Array(s) => write!(f, "{:?}", s),
+            Value::Enum(s) => write!(f, "{}", s),
+            Value::UUID(s) => write!(f, "{}", s),
+            Value::Null => write!(f, "NULL"),
+        }
+    }
+}
+
+
 #[derive(Debug, Clone)]
 pub enum NumericValue {
     IntU8(u8),
