@@ -50,16 +50,19 @@ impl SimpleParser {
             _ => return Err(format!("unknown column type: {}", column_type_str).to_string())
         };
 
+        let column_length = match column_type {
+            ColumnType::Text(TextType::Fixed(len)) => len,
+            ColumnType::Text(TextType::Char) => 1,
+            _ => 0
+        };
+
         let mut column = Column::new(column_name, column_type);
+        column.length = column_length;
 
         for &arg in args {
             let parts: Vec<&str> = arg.split("=").collect();
 
             match parts[0] {
-                "length" => {
-                    if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
-                    column.length = parts[1].parse().unwrap();
-                },
                 "default" => {
                     if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
                     let default_value = parts[1];
