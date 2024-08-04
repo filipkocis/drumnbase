@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum NumericValue {
     IntU8(u8),
     IntU16(u16),
@@ -15,7 +15,7 @@ pub enum NumericValue {
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Text(String),
     Numeric(NumericValue),
@@ -25,9 +25,55 @@ pub enum Value {
     Array(Vec<Value>),
     Enum(String),
     UUID(String),
+    Null,
 }
 
 #[derive(Debug)]
 pub struct Row {
-    pub values: Vec<Value>,
+    values: Vec<Value>,
+}
+
+impl Row {
+    pub fn new() -> Row {
+        Row {
+            values: Vec::new(),
+        }
+    }
+
+    pub fn add(&mut self, value: Value) {
+        self.values.push(value);
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Value> {
+        self.values.get(index)
+    }
+
+    pub fn set(&mut self, index: usize, value: Value) {
+        if index >= self.values.len() {
+            self.values.resize(index + 1, Value::Null);
+        }
+
+        self.values[index] = value;
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<Value> {
+        if index >= self.values.len() { return None; }
+        Some(self.values.remove(index))
+    }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Value> {
+        self.values.get_mut(index)
+    }
+
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<Value> {
+        self.values.iter()
+    }
 }
