@@ -1,5 +1,11 @@
 use std::fmt::Display;
 
+impl ToString for Row {
+    fn to_string(&self) -> String {
+        self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" | ")
+    }
+}
+
 impl Display for NumericValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -64,7 +70,7 @@ pub enum Value {
     Null,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Row {
     values: Vec<Value>,
 }
