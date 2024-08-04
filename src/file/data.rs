@@ -77,7 +77,7 @@ impl Data {
         let writer = self.writer.as_mut().unwrap();
 
         for i in 0..self.buf_rows.len() {
-            let buf_row = self.buf_rows[i].to_string();
+            let buf_row = self.buf_rows[i].to_string() + "\n";
             writer.write_all(buf_row.as_bytes()).unwrap();
         }
         self.buf_rows.clear();
