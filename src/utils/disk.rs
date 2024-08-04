@@ -2,6 +2,19 @@ use std::fs;
 
 use crate::utils::log;
 
+pub fn remove_directory_all(path: &str) -> Result<(), String> {
+    let result = fs::remove_dir_all(path);
+
+    if let Err(e) = result {
+        let err_msg = format!("failed to remove dir path {}\n{}", path, e);
+        log::error(&err_msg);
+        return Err(err_msg);
+    }
+
+    log::info(format!("removed dir path {}", path)); 
+    Ok(())
+}
+
 pub fn copy_file(from: &str, to: &str) -> Result<(), String> {
     let result = fs::copy(from, to);
 
