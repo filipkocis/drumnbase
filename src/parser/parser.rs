@@ -30,7 +30,7 @@ impl SimpleParser {
             "float_64" => ColumnType::Numeric(NumericType::Float64),
             
             "char" => ColumnType::Text(TextType::Char),
-            "variable" => ColumnType::Text(TextType::Variable),
+            // "variable" => ColumnType::Text(TextType::Variable),
             s if s.starts_with("fixed") => {
                 let mut fixed_length = 255;
 
