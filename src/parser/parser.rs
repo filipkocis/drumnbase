@@ -3,7 +3,7 @@ use std::fs;
 use crate::{
     parser::Schema, 
     file::data::LoadMode, 
-    basics::column::{Column, ColumnType, NumericType, TextType}, utils::log
+    basics::{column::{Column, ColumnType, NumericType, TextType}, table::Table, row::Row}, utils::log
 };
 
 pub trait Parser {
@@ -85,9 +85,71 @@ impl SimpleParser {
         Ok(column)
     }
 
+    fn handle_table_row_get(table: &mut Table, args_parts: &[&str]) -> Result<(), String> {
+
+        todo!()
+    }
+
+    fn handle_table_row_delete(table: &mut Table, args_parts: &[&str]) -> Result<(), String> {
+        
+        todo!()
+    }
+
+    fn handle_table_row_add(table: &mut Table, args_parts: &[&str]) -> Result<(), String> {
+        let required_columns_count = table.columns.iter().filter(|c| c.not_null).count();
+
+        if args_parts.len() < required_columns_count {
+            return Err(format!("Invalid row add arguments, expected {} got {}", required_columns_count, args_parts.len()))
+        }
+
+        let mut row = Row::new();
+
+        for (i, column) in table.columns.iter().enumerate() {
+            let current_arg = *args_parts
+                .iter()
+                .find(|s| 
+                    s.starts_with(format!("{}=", column.name).as_str())
+                )
+                .ok_or(format!("Missing row field for column: {}", column.name))?;
+
+            let parts: Vec<&str> = current_arg.split("=").collect();
+            if parts.len() != 2 { return Err(format!("Invalid row add argument: {}", current_arg)) }
+
+            let value = parts[1];
+            let valid_value = column.validate(value)?;   
+
+            row.set(i, valid_value);
+        }
+
+        table.data.rows.push(row);
+        Ok(())
+    }
+
+    /// table <table_name> row <row_command> [row_args...]
+    fn handle_table_row(schema: &mut Schema, args: &Vec<String>, args_parts: &[&str]) -> Result<(), String> {
+        if args.len() < 4 { return Err("Invalid table row command arguments length".to_string()) }
+
+        let table_name = args_parts[0];
+        let command = args[2].as_str();
+        let args_parts = &args_parts[3..];
+
+        let table = schema.get_table(table_name)
+            .ok_or(format!("Table not found: {}", table_name))?;
+
+        match command {
+            "delete" => Self::handle_table_row_delete(table, args_parts)?,
+            "add" => Self::handle_table_row_add(table, args_parts)?,
+            "get" => Self::handle_table_row_get(table, args_parts)?,
+
+            _ => return Err(format!("Unknown table row command: {}", command))
+        }
+
+        Ok(())
+    }
+
     /// table <table_name> column <column_name> <column_command> <column_type> [column_args...]
     fn handle_table_column(schema: &mut Schema, args: &Vec<String>, args_parts: &[&str]) -> Result<(), String> {
-        if args.len() < 4 { return Err("Invalid table column command arguments".to_string()) }
+        if args.len() < 4 { return Err("Invalid table column command arguments length".to_string()) }
 
         let table_name = args_parts[0];
         let column_name = args_parts[2];
@@ -99,13 +161,13 @@ impl SimpleParser {
         match command {
             "delete" => table.columns.retain(|c| c.name != column_name),
             "add" => {
-                if args.len() < 5 { return Err("Invalid table column add command arguments".to_string()) }
+                if args.len() < 5 { return Err("Invalid table column add command arguments length".to_string()) }
                 let column_args = &mut args[4..].iter().map(|s| s.as_str()).collect::<Vec<&str>>();
                 column_args.remove(0);
                 let column_type = args[4].as_str();
                 let column = Self::parse_new_column(column_name, column_type, &column_args)?;
                 table.columns.push(column)
-            }
+            },
 
             _ => return Err(format!("Unknown column command: {}", command))
         }
@@ -143,10 +205,11 @@ impl SimpleParser {
 
         let table_name = args_parts[0];
         match args[1].as_str() {
-            "create" => schema.add_table(table_name),
+            "create" => schema.add_table(table_name)?,
             "delete" => schema.delete_table(table_name),
             "set" => Self::handle_table_set(schema, args, args_parts)?,
             "column" => Self::handle_table_column(schema, args, args_parts)?,
+            "row" => Self::handle_table_row(schema, args, args_parts)?,
 
             _ => return Err(format!("Unknown table command: {}", args_parts[1]))
         }
