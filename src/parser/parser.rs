@@ -121,7 +121,7 @@ impl SimpleParser {
             row.set(i, valid_value);
         }
 
-        table.data.rows.push(row);
+        table.data.buf_rows.push(row);
         Ok(())
     }
 

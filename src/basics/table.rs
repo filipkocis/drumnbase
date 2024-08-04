@@ -83,13 +83,13 @@ impl Table {
     pub fn print_rows(&self) {
         let spacing = 7;
 
-        if !self.data.rows.is_empty() {
+        if !self.data.is_empty() {
             print!("     ");
             print!("{}", self.columns.iter().map(|c| format!("{:width$} ", c.name.to_uppercase(), width = spacing)).collect::<String>());
             println!();
         }
 
-        for row in &self.data.rows {
+        for row in self.data.iter() {
             print!("ROW: ");
             for cell in row.iter() {
                 print!("{:width$} ", format!("{}", cell), width = spacing);
