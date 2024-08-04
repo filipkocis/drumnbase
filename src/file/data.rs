@@ -63,7 +63,7 @@ impl Data {
         if self.buf_rows.len() == 0 { return Ok(()) }
         if !self.loaded { return Err("data not loaded".to_string()) }
 
-        self.buf_rows.iter().rev().for_each(|r| {
+        self.buf_rows.iter().for_each(|r| {
             self.rows.push(r.clone())
         });
 
@@ -76,10 +76,11 @@ impl Data {
 
         let writer = self.writer.as_mut().unwrap();
 
-        self.buf_rows.reverse();
-        for buf_row in self.buf_rows.pop() {
-            writer.write_all(buf_row.to_string().as_bytes()).unwrap();
+        for i in 0..self.buf_rows.len() {
+            let buf_row = self.buf_rows[i].to_string();
+            writer.write_all(buf_row.as_bytes()).unwrap();
         }
+        self.buf_rows.clear();
 
         writer.flush().unwrap();
         Ok(())
