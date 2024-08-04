@@ -135,7 +135,16 @@ impl DatabaseBuilder {
         disk::create_directory(&Table::path(&database_path)).or_else(clean_up)?;
         disk::copy_file(schema_path, &new_schema_path).or_else(clean_up)?;
 
-        for table in Schema::load_from_file(&new_schema_path)?.tables {
+        let schema = match Schema::load_from_file(&new_schema_path) {
+            Ok(v) => v,
+            Err(e) => {
+                log::error(format!("failed to load schema '{}'\n{}", new_schema_path, e));
+                disk::remove_directory_all(&database_path)?;
+                return Err(e); 
+            }
+        };
+
+        for table in schema.tables {
             let table_path = Table::path_for(&database_path, &table.name);
             disk::create_file(&table_path).or_else(clean_up)?;
         }
