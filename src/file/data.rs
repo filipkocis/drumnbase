@@ -96,6 +96,7 @@ impl Data {
         let reader = self.reader.as_mut().unwrap();
 
         let entry_size = columns.iter().fold(0, |acc, c| acc + c.length);
+        let entry_size = entry_size + 1; // +1 for \n, temporary solution
         let mut buf = vec![0u8; entry_size as usize];
 
         while let Ok(_) = reader.read_exact(buf.as_mut()) {
