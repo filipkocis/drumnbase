@@ -1,8 +1,9 @@
+#[derive(Debug)]
 pub struct ConditionChain {
     pub conditions: Vec<ConditionChainValue>,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum ConditionChainValue {
     Condition(Condition),
     And,
@@ -25,14 +26,14 @@ impl ConditionChainValue {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct Condition {
     pub column: String,
     pub operator: ConditionOperator,
     pub value: String,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum ConditionOperator {
     Equal,
     NotEqual,
@@ -52,8 +53,7 @@ pub enum ConditionOperator {
 
 impl ConditionOperator {
     pub fn list() -> Vec<&'static str> {
-        vec!["'=", ">", "<", ">=", "<=", "!=", "like", "in", "not in", "between", "is null", "is not null", "eq", "gt", "lt", "gte", "lte", "ne", "lk", "in", "nin", "btw", "isnull", "notnull'
-"]
+        vec!["=", ">", "<", ">=", "<=", "!=", "like", "in", "not in", "between", "is null", "is not null", "eq", "gt", "lt", "gte", "lte", "ne", "lk", "in", "nin", "btw", "isnull", "notnull"]
     }
 
     pub fn from_str(s: &str) -> Result<ConditionOperator, String> {
