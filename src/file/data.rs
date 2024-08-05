@@ -96,10 +96,13 @@ impl Data {
         let entry_size = columns.iter().fold(0, |acc, c| acc + c.length);
         let mut buf = vec![0u8; entry_size as usize];
 
-        while let Ok(_) = reader.read_exact(buf.as_mut()) {
-            let row = Row::convert_from_bytes(&buf, columns).map_err(|e|
-                format!("failed to convert row from bytes: {}", e)
-            )?;
+        while let Some((i , _)) = reader.read_exact(buf.as_mut()).iter().enumerate().next() {
+            let row = Row::convert_from_bytes(&buf, columns).map_err(|e| {
+                let err_msg = format!("failed to convert row at {} from bytes: {}", i, e);
+                log::error(&err_msg);
+                e
+            })?;
+
             self.rows.push(row);
         }
 
