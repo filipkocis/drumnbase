@@ -197,7 +197,7 @@ impl SimpleQueryParser {
                 self.next();
                 conditions.push(chain);
             } else { if conditions.len() != 0 { break; } }
-            
+             
             let column = self.next().unwrap().to_string();
             let operator = self.expect_any_next(&ConditionOperator::list())?;
             let operator = ConditionOperator::from_str(operator)?;

@@ -8,6 +8,7 @@ pub struct QueryResult {
     pub data: Vec<Row>,
 }
 
+#[derive(Debug)]
 pub enum SelectExtra {
     Where(ConditionChain),
     Order(Order),
@@ -22,32 +23,38 @@ impl SelectExtra {
     }
 }
 
+#[derive(Debug)]
 pub struct SelectQuery {
     pub columns: Vec<String>,  
     pub extras: Vec<SelectExtra>,
 }
 
+#[derive(Debug)]
 pub struct InsertQuery {
     pub columns: Vec<String>,
     pub values: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct UpdateQuery {
     pub columns: Vec<String>,
     pub values: Vec<String>,
     pub conditions: ConditionChain,
 }
 
+#[derive(Debug)]
 pub struct DeleteQuery {
     pub conditions: ConditionChain,
     pub limit: Option<usize>,
 }
 
+#[derive(Debug)]
 pub enum Order {
     Ascending(String),
     Descending(String),
 }
 
+#[derive(Debug)]
 pub enum QueryType {
     Select(SelectQuery),
     Insert(InsertQuery),
@@ -55,6 +62,7 @@ pub enum QueryType {
     Delete(DeleteQuery),
 }
 
+#[derive(Debug)]
 pub struct Query {
     text: String,
     table_name: String,
