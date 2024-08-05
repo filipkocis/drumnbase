@@ -77,9 +77,7 @@ impl Data {
         let writer = self.writer.as_mut().unwrap();
 
         for i in 0..self.buf_rows.len() {
-            let mut buf = self.buf_rows[i].convert_to_bytes(columns); 
-            buf.push(b'\n');
-
+            let buf = self.buf_rows[i].convert_to_bytes(columns); 
             writer.write_all(&buf).unwrap();
         }
         self.buf_rows.clear();
@@ -96,11 +94,12 @@ impl Data {
         let reader = self.reader.as_mut().unwrap();
 
         let entry_size = columns.iter().fold(0, |acc, c| acc + c.length);
-        let entry_size = entry_size + 1; // +1 for \n, temporary solution
         let mut buf = vec![0u8; entry_size as usize];
 
         while let Ok(_) = reader.read_exact(buf.as_mut()) {
-            let row = Row::convert_from_bytes(&buf, columns)?;
+            let row = Row::convert_from_bytes(&buf, columns).map_err(|e|
+                format!("failed to convert row from bytes: {}", e)
+            )?;
             self.rows.push(row);
         }
 
