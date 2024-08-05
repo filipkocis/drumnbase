@@ -1,4 +1,5 @@
 use crate::basics::table::Table;
+use crate::file::read::DatabaseReader;
 use crate::file::write::DatabaseWriter;
 use crate::parser::Schema;
 use crate::database::Database;
@@ -108,6 +109,7 @@ impl DatabaseBuilder {
         self.check_schema_files(&schema)?;
 
         schema.tables.iter_mut().for_each(|table| table.load(&database_path));
+        schema.read()?;
         schema.write()?;
 
         let database = Database::from_schema(&self.name, &self.root_dir, schema);
