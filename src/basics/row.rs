@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, array::TryFromSliceError, string::FromUtf8Error};
 
-use super::column::Column;
+use super::column::{Column, ColumnType, NumericType, TextType};
 
 impl ToString for Row {
     fn to_string(&self) -> String {
@@ -122,11 +122,24 @@ impl Row {
     }
 
     pub fn convert_to_bytes(&self, columns: &Vec<Column>) -> Vec<u8> {
-
         self.values.iter().enumerate().flat_map(|(i, v)| {
             let length = columns[i].length;
             v.to_bytes(length)
         }).collect()
+    }
+
+    pub fn convert_from_bytes(bytes: &[u8], columns: &Vec<Column>) -> Result<Self, String> {
+        let mut row = Row::new();
+        let mut offset = 0;
+
+        for column in columns {
+            let length = column.length as usize;
+            let value = Value::from_bytes(&bytes[offset..offset + length], &column.data_type)?;
+            row.add(value);
+            offset += length;
+        }
+        
+        Ok(row)
     }
 }
 
@@ -179,5 +192,69 @@ impl ToBytes for NumericValue {
 impl ToBytes for bool {
     fn to_bytes(&self, _: u32) -> Vec<u8> {
         vec![*self as u8]
+    }
+}
+
+trait FromBytes {
+    type EnumType;
+    fn from_bytes(bytes: &[u8], enum_type: &Self::EnumType) -> Result<Self, String> where Self: Sized;
+}
+
+impl FromBytes for Value {
+    type EnumType = ColumnType;
+
+    fn from_bytes(bytes: &[u8], column_type: &ColumnType) -> Result<Self, String> {
+        let value = match column_type {
+            ColumnType::Text(text_type) => {
+                let map_err = |e: FromUtf8Error| e.to_string();
+                let text = match text_type {
+                    TextType::Char => String::from_utf8(bytes.to_vec()).map_err(map_err)?,
+                    // TextType::Variable => {
+                    //     let s = String::from_utf8(bytes.to_vec()).map_err(map_err)?;
+                    //     Value::Text(s)
+                    // },
+                    TextType::Fixed(length) => {
+                        let mut bytes = bytes.to_vec();
+                        bytes.truncate(*length as usize);
+                        String::from_utf8(bytes).map_err(map_err)?
+                    }
+                    
+                    _ => todo!()
+                };
+
+                Value::Text(text)
+            },
+            ColumnType::Numeric(numeric_type) => {
+                let v = NumericValue::from_bytes(bytes, numeric_type)?;
+                Value::Numeric(v)
+            },
+
+            _ => todo!()
+        };
+
+        Ok(value)
+    }
+}
+
+impl FromBytes for NumericValue {
+    type EnumType = NumericType;
+
+    fn from_bytes(bytes: &[u8], numeric_type: &NumericType) -> Result<Self, String> where Self: Sized {
+        let map_err = |e: TryFromSliceError| e.to_string(); 
+
+        let numeric_value = match numeric_type {
+            NumericType::IntI8 => NumericValue::IntI8(i8::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::IntI16 => NumericValue::IntI16(i16::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::IntI32 => NumericValue::IntI32(i32::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::IntI64 => NumericValue::IntI64(i64::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::IntU8 => NumericValue::IntU8(u8::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::IntU16 => NumericValue::IntU16(u16::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::IntU32 => NumericValue::IntU32(u32::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::IntU64 => NumericValue::IntU64(u64::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::Float32 => NumericValue::Float32(f32::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            NumericType::Float64 => NumericValue::Float64(f64::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+        };
+
+        Ok(numeric_value)
     }
 }
