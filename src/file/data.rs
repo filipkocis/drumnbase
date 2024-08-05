@@ -1,4 +1,4 @@
-use std::{path::PathBuf, io::{BufReader, BufWriter, Write}, fs::File};
+use std::{path::PathBuf, io::{BufReader, BufWriter, Write, Read}, fs::File};
 
 use crate::{basics::{row::{Row}, column::Column}, utils::log};
 
@@ -85,6 +85,30 @@ impl Data {
         self.buf_rows.clear();
 
         writer.flush().unwrap();
+        Ok(())
+    }
+}
+
+impl Data {
+    pub fn read_memory(&mut self, columns: &Vec<Column>) -> Result<(), String> {
+        if !self.loaded { return Err("data not loaded".to_string()) }
+
+        let reader = self.reader.as_mut().unwrap();
+
+        let entry_size = columns.iter().fold(0, |acc, c| acc + c.length);
+        let mut buf = vec![0u8; entry_size as usize];
+
+        while let Ok(_) = reader.read_exact(buf.as_mut()) {
+            let row = Row::convert_from_bytes(&buf, columns)?;
+            self.rows.push(row);
+        }
+
+        Ok(())
+    }
+
+    /// Read data in load_mode 'Disk'
+    /// - this functions does nothing, to store data in memory use load_mode 'Memory' which uses 'read_memory' function
+    pub fn read_disk(&mut self, _: &Vec<Column>) -> Result<(), String> {
         Ok(())
     }
 }
