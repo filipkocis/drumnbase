@@ -1,3 +1,5 @@
+use crate::query::query::Order;
+
 use super::query::{Query, QueryType, SelectExtra, SelectQuery};
 use super::condition::{ConditionChain, ConditionOperator, ConditionChainValue, Condition};
 
@@ -213,21 +215,46 @@ impl SimpleQueryParser {
 
     fn parse_order(&mut self) -> Result<SelectExtra, String> {
         self.expect_next("order")?; 
-        todo!()
+        let column = self.next().ok_or("Order column expected")?.to_string();
+        let order = match self.expect_any_next(&["asc", "desc"])? {
+            "asc" => Order::Ascending(column),
+            "desc" => Order::Descending(column),
+            v => return Err(format!("Invalid order direction '{}'", v))
+        };
+
+        Ok(SelectExtra::Order(order))
     }
 
     fn parse_limit(&mut self) -> Result<SelectExtra, String> {
         self.expect_next("limit")?; 
-        todo!()
+        let limit = self.next().ok_or("Limit value expected")?;
+        let limit = limit.parse::<usize>().map_err(|_| format!("Invalid limit value '{}'", limit))?;
+
+        Ok(SelectExtra::Limit(limit))
     }
 
     fn parse_offset(&mut self) -> Result<SelectExtra, String> {
-        self.expect_next("where")?; 
-        todo!()
+        self.expect_next("offset")?; 
+        let offset = self.next().ok_or("Offset value expected")?;
+        let offset = offset.parse::<usize>().map_err(|_| format!("Invalid offset value '{}'", offset))?;
+
+        Ok(SelectExtra::Offset(offset))
     }
 
     fn parse_exclude(&mut self) -> Result<SelectExtra, String> {
         self.expect_next("exclude")?; 
-        todo!()
+        let mut columns = Vec::new();
+
+        loop {
+            if let None = self.peek() { break; }
+            if let Ok(v) = self.expect_any_peek(&SelectExtra::list()) {
+                if columns.len() == 0 { return Err(format!("Column name expected after 'exclude', got '{}'", v)) }
+                break; 
+            }
+            columns.push(self.next().unwrap().to_string());
+        };
+
+        if columns.len() == 0 { return Err("At least one column name expected after 'exclude'".to_string()) }
+        Ok(SelectExtra::Exclude(columns))
     }
 }
