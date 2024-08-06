@@ -48,7 +48,14 @@ impl Query {
 impl Database {
     fn select(&mut self, table: &str, select: &SelectQuery) -> Result<QueryResult, String> {
         let table = self.get_table(table).ok_or(format!("Table '{}' not found", table))?;
-        table.check_columns_exist(&select.columns)?;
+
+        let contains_star = select.columns.contains(&"*".to_string());
+        let query_columns = match contains_star {
+            true => table.get_column_names(),
+            false => select.columns.clone(),
+        };
+
+        table.check_columns_exist(&query_columns)?;
          
         let where_chain = select.get_where();
         let mut checked_rows: Vec<&Row> = match where_chain {
@@ -74,14 +81,14 @@ impl Database {
         let keep_indexes = match exclude {
             Some(exclude_columns) => {
                 let exclude_indexes = table.get_column_indicies(&exclude_columns)?;
-                let keep_indexes = table.get_column_indicies(&select.columns)?;
+                let keep_indexes = table.get_column_indicies(&query_columns)?;
                 let indexes = keep_indexes
                     .into_iter()
                     .filter(|e| !exclude_indexes.contains(e))
                     .collect::<Vec<_>>();
                 indexes
             },
-            None => table.get_column_indicies(&select.columns)?,
+            None => table.get_column_indicies(&query_columns)?,
         };
 
 

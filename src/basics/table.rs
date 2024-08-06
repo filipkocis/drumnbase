@@ -35,6 +35,10 @@ impl Table {
         format!("{}/{}.quack", Table::path(database_path), table_name)
     }
 
+    pub fn get_column_names(&self) -> Vec<String> {
+        self.columns.iter().map(|c| c.name.clone()).collect()
+    }
+
     pub fn get_column_mut(&mut self, column_name: &str) -> Option<&mut Column> {
         self.columns.iter_mut().find(|column| column.name == column_name)
     }
