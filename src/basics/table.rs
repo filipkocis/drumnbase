@@ -43,6 +43,13 @@ impl Table {
         self.columns.iter().find(|column| column.name == column_name)
     }
 
+    pub fn get_column_index(&self, column_name: &str) -> Result<usize, String> {
+        self.columns
+            .iter()
+            .position(|column| column.name == column_name)
+            .ok_or(format!("Column '{}' not found in table '{}'", column_name, self.name))
+    }
+
     pub fn load(&mut self, database_path: &str) {
         log::info(format!("loading table '{}'", self.name));
         let table_path = Table::path_for(database_path, &self.name);
@@ -96,6 +103,33 @@ impl Table {
             }
             println!();
         }
+    }
+}
+
+impl Table {
+    pub fn check_column_exists(&self, column_name: &str) -> Result<(), String> {
+        match self.get_column(column_name) {
+            None => Err(format!("Column '{}' not found in table '{}'", column_name, self.name)),
+            Some(_) => Ok(())
+        }
+    }
+
+    pub fn check_columns_exist(&self, column_names: &Vec<String>) -> Result<(), String> {
+        match column_names.iter().filter(|n| self.check_column_exists(n).is_err()).collect::<Vec<&String>>() {
+            c if c.len() == 0 => Ok(()),
+            invalid_columns => Err(format!("Columns {:?} not found in table '{}'", invalid_columns, self.name))
+        }
+    }
+
+    pub fn get_column_indicies(&self, column_names: &Vec<String>) ->Result<Vec<usize>, String> {
+        let mut indicies = Vec::new();
+
+        for column_name in column_names {
+            let index = self.get_column_index(column_name)?;
+            indicies.push(index);
+        }
+
+        Ok(indicies)
     }
 }
 
