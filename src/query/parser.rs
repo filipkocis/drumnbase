@@ -1,6 +1,6 @@
 use crate::query::query::Order;
 
-use super::query::{Query, QueryType, SelectExtra, SelectQuery};
+use super::query::{Query, QueryType, SelectExtra, SelectQuery, InsertQuery, KeyVal};
 use super::condition::{ConditionChain, ConditionOperator, ConditionChainValue, Condition};
 
 pub trait QueryParser {
@@ -86,14 +86,6 @@ impl SimpleQueryParser {
 
 
 
-    fn parse_insert(&mut self) -> Result<QueryType, String> {
-        self.expect_next("insert")?;
-        // let columns = self.parse_columns()?;
-
-        todo!()
-    }
-
-
 
     fn parse_update(&mut self) -> Result<QueryType, String> {
         self.expect_next("update")?;
@@ -132,6 +124,35 @@ impl QueryParser for SimpleQueryParser {
         query.set_specific(specific_query);
 
         Ok(query)
+    }
+}
+
+/// Implementation for INSERT queries
+impl SimpleQueryParser {
+    fn parse_insert(&mut self) -> Result<QueryType, String> {
+        self.expect_next("insert")?;
+        let mut key_vals = Vec::new();
+
+        loop {
+            if let None = self.peek() { break; }
+            let (column_name, value) = self.parse_key_val()?;
+            key_vals.push(KeyVal::from(column_name, value))
+        }
+
+        if key_vals.len() == 0 { return Err("At least one keyval expected".to_string()) }
+
+        Ok(QueryType::Insert(InsertQuery { key_vals }))
+    }
+
+    fn parse_key_val(&mut self) -> Result<(String, String), String> {
+        let key_val = self.next().ok_or("Column name and value keyval expected")?;
+        let parts: Vec<&str> = key_val.split(":").collect();
+        if parts.len() != 2 || parts[1].len() == 0 { return Err(format!("Invalid keyval format, expected 'key:val' got '{}'", key_val)) } 
+
+        let key = parts[0].to_string();
+        let val = parts[1].to_string();
+
+        Ok((key, val))
     }
 }
 
