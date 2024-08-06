@@ -1,4 +1,4 @@
-use crate::query::query::Order;
+use crate::query::query::{Order, UpdateQuery};
 
 use super::query::{Query, QueryType, SelectExtra, SelectQuery, InsertQuery, KeyVal};
 use super::condition::{ConditionChain, ConditionOperator, ConditionChainValue, Condition};
@@ -87,14 +87,6 @@ impl SimpleQueryParser {
 
 
 
-    fn parse_update(&mut self) -> Result<QueryType, String> {
-        self.expect_next("update")?;
-        // let columns = self.parse_columns()?;
-
-        todo!()
-    }
-
-
 
     fn parse_delete(&mut self) -> Result<QueryType, String> {
         self.expect_next("delete")?;
@@ -127,21 +119,39 @@ impl QueryParser for SimpleQueryParser {
     }
 }
 
+/// Implementation for UPDATE queries
+impl SimpleQueryParser {
+    fn parse_update(&mut self) -> Result<QueryType, String> {
+        self.expect_next("update")?;
+        let key_vals = self.parse_key_vals()?;
+        let conditions = self.parse_where()?.unwrap_chain()?;
+
+        Ok(QueryType::Update(UpdateQuery { key_vals, conditions }))
+    }
+}
+
 /// Implementation for INSERT queries
 impl SimpleQueryParser {
     fn parse_insert(&mut self) -> Result<QueryType, String> {
         self.expect_next("insert")?;
+        let key_vals = self.parse_key_vals()?;
+
+        Ok(QueryType::Insert(InsertQuery { key_vals }))
+    }
+
+    fn parse_key_vals(&mut self) ->Result<Vec<KeyVal>, String> {
         let mut key_vals = Vec::new();
 
         loop {
             if let None = self.peek() { break; }
+            if let Ok(_) = self.expect_any_peek(&SelectExtra::list()) { break; }
             let (column_name, value) = self.parse_key_val()?;
             key_vals.push(KeyVal::from(column_name, value))
         }
 
         if key_vals.len() == 0 { return Err("At least one keyval expected".to_string()) }
 
-        Ok(QueryType::Insert(InsertQuery { key_vals }))
+        Ok(key_vals)
     }
 
     fn parse_key_val(&mut self) -> Result<(String, String), String> {
