@@ -73,7 +73,8 @@ impl Database {
             None => checked_rows
         };
 
-        let limit = select.get_limit().unwrap_or(0);
+        const DEFAULT_LIMIT: usize = 1_000;
+        let limit = select.get_limit().unwrap_or(DEFAULT_LIMIT);
         let offset = select.get_offset().unwrap_or(0);
         let limit_offset_rows = sorted_rows.into_iter().skip(offset).take(limit).collect::<Vec<_>>();
 
