@@ -240,6 +240,8 @@ impl SimpleQueryParser {
             conditions.push(condition);
         } 
 
+        if conditions.len() == 0 { return Err("At least one condition expected after 'where'".to_string()) }
+
         let chain = ConditionChain { conditions };
         Ok(SelectExtra::Where(chain))
     }
