@@ -143,12 +143,22 @@ impl Row {
         Ok(row)
     }
 
-    pub fn with_excluded_columns(&self, indicies: &[usize]) -> Row {
+    pub fn with_excluded_columns(&self, indexes: &[usize]) -> Row {
         let mut row = Row::new();
         self.values.iter().enumerate().for_each(|(i, v)| {
-            if !indicies.contains(&i) {
+            if !indexes.contains(&i) {
                 row.add(v.clone());
             }
+        });
+        row
+    }
+
+    /// Returns a new row with only the columns at the given indexes.
+    /// Panics if any of the indexes are out of bounds
+    pub fn with_kept_columns(&self, indexes: &[usize]) -> Row {
+        let mut row = Row::new();
+        indexes.iter().for_each(|&i| {
+            row.add(self.values[i].clone());
         });
         row
     }
