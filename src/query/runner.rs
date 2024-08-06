@@ -55,7 +55,7 @@ impl Database {
             false => select.columns.clone(),
         };
 
-        table.check_columns_exist(&query_columns)?;
+        table.check_columns_exist(&select.columns)?;
          
         let where_chain = select.get_where();
         let mut checked_rows: Vec<&Row> = match where_chain {
@@ -67,7 +67,8 @@ impl Database {
         let order = select.get_order();
         let sorted_rows = match order {
             Some(order) => {
-                checked_rows.sort_by(|a, b| order.compare(a, b, 0));
+                let column_index = table.get_column_index(&order.get_column())?;
+                checked_rows.sort_by(|a, b| order.compare(a, b, column_index));
                 checked_rows
             }
             None => checked_rows

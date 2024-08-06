@@ -144,6 +144,13 @@ pub enum Order {
 }
 
 impl Order {
+    pub fn get_column(&self) -> &str {
+        match self {
+            Self::Ascending(column) => column,
+            Self::Descending(column) => column,
+        }
+    }
+
     /// Compare two rows based on the order, column should be valid and checked before calling this function
     /// - this functin will panic if the column index is out of bounds or the comparisson is invalid
     pub fn compare(&self, a: &Row, b: &Row, i: usize) -> std::cmp::Ordering {
