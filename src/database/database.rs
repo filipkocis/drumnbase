@@ -33,4 +33,8 @@ impl Database {
     pub fn path(&self) -> String {
         format!("{}/{}", self.root_dir, self.name) 
     }
+
+    pub fn get_table(&self, name: &str) -> Option<&Table> {
+        self.tables.iter().find(|table| table.name == name)
+    }
 }
