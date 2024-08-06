@@ -30,15 +30,25 @@ pub struct SelectQuery {
 }
 
 #[derive(Debug)]
+pub struct KeyVal {
+    pub key: String,
+    pub val: String,
+}
+
+impl KeyVal {
+    pub fn from(key: String, val: String) -> Self {
+        Self { key, val }
+    }
+}
+
+#[derive(Debug)]
 pub struct InsertQuery {
-    pub columns: Vec<String>,
-    pub values: Vec<String>,
+    pub key_vals: Vec<KeyVal>,
 }
 
 #[derive(Debug)]
 pub struct UpdateQuery {
-    pub columns: Vec<String>,
-    pub values: Vec<String>,
+    pub key_vals: Vec<KeyVal>,
     pub conditions: ConditionChain,
 }
 
