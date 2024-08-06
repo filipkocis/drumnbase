@@ -126,6 +126,8 @@ impl SimpleQueryParser {
         let key_vals = self.parse_key_vals()?;
         let conditions = self.parse_where()?.unwrap_chain()?;
 
+        if let Some(_) = self.peek() { return Err(format!("Unexpected value in update query '{}'", self.peek().unwrap())) }
+
         Ok(QueryType::Update(UpdateQuery { key_vals, conditions }))
     }
 }
@@ -136,6 +138,8 @@ impl SimpleQueryParser {
         self.expect_next("insert")?;
         let key_vals = self.parse_key_vals()?;
 
+        if let Some(_) = self.peek() { return Err(format!("Unexpected value in insert query '{}'", self.peek().unwrap())) }
+        
         Ok(QueryType::Insert(InsertQuery { key_vals }))
     }
 
