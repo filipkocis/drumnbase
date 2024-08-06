@@ -1,6 +1,6 @@
 use crate::query::query::{Order, UpdateQuery};
 
-use super::query::{Query, QueryType, SelectExtra, SelectQuery, InsertQuery, KeyVal};
+use super::query::{Query, QueryType, SelectExtra, SelectQuery, InsertQuery, KeyVal, DeleteQuery};
 use super::condition::{ConditionChain, ConditionOperator, ConditionChainValue, Condition};
 
 pub trait QueryParser {
@@ -81,19 +81,6 @@ impl SimpleQueryParser {
             None => Err(format!("Expected any of '{:?}', found end of query", expected))
         }
     }
-
-    
-
-
-
-
-
-    fn parse_delete(&mut self) -> Result<QueryType, String> {
-        self.expect_next("delete")?;
-        // let columns = self.parse_columns()?;
-
-        todo!()
-    }
 }
 
 impl QueryParser for SimpleQueryParser {
@@ -119,6 +106,26 @@ impl QueryParser for SimpleQueryParser {
     }
 }
 
+/// Implementation for DELETE queries
+impl SimpleQueryParser {
+    fn parse_delete(&mut self) -> Result<QueryType, String> {
+        self.expect_next("delete")?;
+        let conditions = self.parse_where()?.unwrap_chain()?;
+
+        let limit = match self.peek() {
+            Some(v) if v == "limit" => { 
+                let limit_value = self.parse_limit()?.unwrap_limit()?;
+                Some(limit_value)
+            },
+            Some(v) => return Err(format!("Unexpected token in delete query '{}'", v)),
+            None => None
+        };
+
+        Ok(QueryType::Delete(DeleteQuery { conditions, limit }))
+    }
+
+}
+
 /// Implementation for UPDATE queries
 impl SimpleQueryParser {
     fn parse_update(&mut self) -> Result<QueryType, String> {
@@ -126,7 +133,7 @@ impl SimpleQueryParser {
         let key_vals = self.parse_key_vals()?;
         let conditions = self.parse_where()?.unwrap_chain()?;
 
-        if let Some(_) = self.peek() { return Err(format!("Unexpected value in update query '{}'", self.peek().unwrap())) }
+        if let Some(v) = self.peek() { return Err(format!("Unexpected token in update query '{}'", v)) }
 
         Ok(QueryType::Update(UpdateQuery { key_vals, conditions }))
     }
@@ -138,7 +145,7 @@ impl SimpleQueryParser {
         self.expect_next("insert")?;
         let key_vals = self.parse_key_vals()?;
 
-        if let Some(_) = self.peek() { return Err(format!("Unexpected value in insert query '{}'", self.peek().unwrap())) }
+        if let Some(v) = self.peek() { return Err(format!("Unexpected token in insert query '{}'", v)) }
         
         Ok(QueryType::Insert(InsertQuery { key_vals }))
     }

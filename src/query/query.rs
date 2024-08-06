@@ -1,4 +1,4 @@
-use crate::{database::database::Database, basics::row::Row};
+use crate::{basics::row::Row};
 
 use super::condition::ConditionChain;
 
@@ -26,6 +26,13 @@ impl SelectExtra {
         match self {
             Self::Where(chain) => Ok(chain),
             _ => Err(format!("Expected Where, got {:?}", self))
+        }
+    }
+
+    pub fn unwrap_limit(self) -> Result<usize, String> {
+        match self {
+            Self::Limit(n) => Ok(n),
+            _ => Err(format!("Expected Limit, got {:?}", self))
         }
     }
 }
@@ -97,10 +104,6 @@ impl Query {
 
     pub fn set_specific(&mut self, specific: QueryType) {
         self.specific = Some(specific);
-    }
-
-    pub fn apply_to(&self, database: &mut Database) -> Result<QueryResult, String> {
-        todo!()
     }
 
     pub fn get_text(&self) -> &str { &self.text }
