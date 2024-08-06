@@ -2,7 +2,7 @@ use std::{path::PathBuf, io::{BufReader, BufWriter, Write, Read}, fs::File};
 
 use crate::{basics::{row::{Row}, column::Column}, utils::log};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LoadMode {
     Memory,
     Disk,
