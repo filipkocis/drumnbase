@@ -2,9 +2,10 @@ use std::{fmt::Display, array::TryFromSliceError, string::FromUtf8Error};
 
 use super::column::{Column, ColumnType, NumericType, TextType};
 
-impl ToString for Row {
-    fn to_string(&self) -> String {
-        self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" | ")
+impl Display for Row {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = self.values.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" | ");
+        write!(f, "{}", string)
     }
 }
 
@@ -42,7 +43,7 @@ impl Display for Value {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum NumericValue {
     IntU8(u8),
     IntU16(u16),
@@ -59,7 +60,7 @@ pub enum NumericValue {
 
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
     Text(String),
     Numeric(NumericValue),
@@ -140,6 +141,16 @@ impl Row {
         }
         
         Ok(row)
+    }
+
+    pub fn with_excluded_columns(&self, indicies: &[usize]) -> Row {
+        let mut row = Row::new();
+        self.values.iter().enumerate().for_each(|(i, v)| {
+            if !indicies.contains(&i) {
+                row.add(v.clone());
+            }
+        });
+        row
     }
 }
 
