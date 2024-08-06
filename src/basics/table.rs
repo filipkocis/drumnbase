@@ -112,6 +112,8 @@ impl Table {
 
 impl Table {
     pub fn check_column_exists(&self, column_name: &str) -> Result<(), String> {
+        if column_name == "*" { return Ok(()) }
+
         match self.get_column(column_name) {
             None => Err(format!("Column '{}' not found in table '{}'", column_name, self.name)),
             Some(_) => Ok(())
