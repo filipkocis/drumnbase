@@ -21,6 +21,13 @@ impl SelectExtra {
     pub fn list() -> Vec<&'static str> {
         vec!["where", "order", "limit", "offset", "exclude"]
     }
+
+    pub fn unwrap_chain(self) -> Result<ConditionChain, String> {
+        match self {
+            Self::Where(chain) => Ok(chain),
+            _ => Err(format!("Expected Where, got {:?}", self))
+        }
+    }
 }
 
 #[derive(Debug)]
