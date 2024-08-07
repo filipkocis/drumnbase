@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, collections::HashMap};
 
 use crate::{basics::column::Column, file::data::Data, utils::log};
 
@@ -127,15 +127,26 @@ impl Table {
         }
     }
 
-    pub fn get_column_indicies(&self, column_names: &Vec<String>) ->Result<Vec<usize>, String> {
-        let mut indicies = Vec::new();
+    pub fn get_column_map(&self, column_names: &Vec<String>) -> Result<HashMap<String, usize>, String> {
+        let indexes = self.get_column_indexes(&column_names)?;
+        let hash_map = HashMap::from_iter(indexes
+            .into_iter()
+            .enumerate()
+            .map(|(i, column_index)| (column_names[i].clone(), column_index))
+        );
+
+        Ok(hash_map)
+    }
+
+    pub fn get_column_indexes(&self, column_names: &Vec<String>) -> Result<Vec<usize>, String> {
+        let mut indexes = Vec::new();
 
         for column_name in column_names {
             let index = self.get_column_index(column_name)?;
-            indicies.push(index);
+            indexes.push(index);
         }
 
-        Ok(indicies)
+        Ok(indexes)
     }
 }
 
