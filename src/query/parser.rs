@@ -207,15 +207,27 @@ impl SimpleQueryParser {
     fn parse_select_extras(&mut self) -> Result<Vec<SelectExtra>, String> {
         let mut extras = Vec::new();
 
+        let mut where_found = false;
+        let mut order_found = false;
+        let mut limit_found = false;
+        let mut offset_found = false;
+        let mut exclude_found = false;
+
+        let dupe_check = |found: &mut bool, name: &str| -> Result<(), String> {
+            if *found { return Err(format!("Duplicate select extra '{}'", name)) }
+            *found = true;
+            Ok(())
+        };
+
         loop {
             if let None = self.peek() { break; }
             if let Ok(v) = self.expect_any_peek(&SelectExtra::list()) {
                 match v {
-                    "where" => extras.push(self.parse_where()?),
-                    "order" => extras.push(self.parse_order()?),
-                    "limit" => extras.push(self.parse_limit()?),
-                    "offset" => extras.push(self.parse_offset()?),
-                    "exclude" => extras.push(self.parse_exclude()?),
+                    "where" => { dupe_check(&mut where_found, v)?; extras.push(self.parse_where()?); },
+                    "order" => { dupe_check(&mut order_found, v)?; extras.push(self.parse_order()?); },
+                    "limit" => { dupe_check(&mut limit_found, v)?; extras.push(self.parse_limit()?); },
+                    "offset" => { dupe_check(&mut offset_found, v)?; extras.push(self.parse_offset()?); },
+                    "exclude" => { dupe_check(&mut exclude_found, v)?; extras.push(self.parse_exclude()?); },
                     _ => return Err(format!("Invalid select extra '{}'", v))
                 };
             } else {
