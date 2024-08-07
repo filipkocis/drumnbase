@@ -93,7 +93,7 @@ impl TimestampType {
 
 impl ColumnType {
     pub fn parse(&self, value: &str) -> Result<Value, String> {
-        match self {
+        let result = match self {
             ColumnType::Numeric(t) => t.parse(value),
             ColumnType::Text(t) => t.parse(value),
             ColumnType::Timestamp(t) => t.parse(value),
@@ -103,7 +103,9 @@ impl ColumnType {
             ColumnType::Array => todo!(),
             ColumnType::Enum => todo!(),
             ColumnType::UUID => todo!(),
-        }
+        };
+
+        result.map_err(|e| format!("Failed to parse value '{}' as {:?}: {}", value, self, e))
     }
 }
 
