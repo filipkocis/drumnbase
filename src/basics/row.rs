@@ -267,10 +267,11 @@ impl FromBytes for Value {
                     //     let s = String::from_utf8(bytes.to_vec()).map_err(map_err)?;
                     //     Value::Text(s)
                     // },
-                    TextType::Fixed(length) => {
-                        let mut bytes = bytes.to_vec();
-                        bytes.truncate(*length as usize);
+                    TextType::Fixed(_) => {
+                        let bytes = bytes.to_vec();
                         String::from_utf8(bytes).map_err(map_err)?
+                            .trim_end_matches('\0')
+                            .to_string()
                     }
                     
                     _ => todo!()
