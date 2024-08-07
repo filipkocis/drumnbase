@@ -73,6 +73,39 @@ pub enum Value {
     Null,
 }
 
+impl Value {
+    pub fn is_null(&self) -> bool {
+        matches!(self, Value::Null)
+    }
+
+    pub fn like(&self, value: &Value) -> bool {
+        match (self, value) {
+            (Value::Text(s1), Value::Text(s2)) => s1.contains(s2),
+            _ => false,
+        }
+    }
+
+    pub fn in_(&self, value: &Value) -> bool {
+        match (self, value) {
+            (Value::Array(a), Value::Array(b)) => a.iter().all(|v| b.contains(v)),
+            (a, Value::Array(b)) => b.contains(a),
+            _ => false,
+        }
+    }
+
+    pub fn between(&self, value: &Value) -> bool {
+        match (self, value) {
+            (Value::Numeric(n), Value::Array(a)) => {
+                
+                true
+            },
+            _ => false,
+        };
+
+        todo!()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Row {
     values: Vec<Value>,
