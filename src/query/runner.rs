@@ -59,8 +59,21 @@ impl Database {
          
         let where_chain = select.get_where();
         let mut checked_rows: Vec<&Row> = match where_chain {
-            // Some(chain) => table.data.iter().filter(|row| chain.check(row)).collect(),
-            Some(_) => todo!(),
+            Some(chain) => {
+                let index_map = table.get_column_map(&query_columns)?;
+                let mut checked_rows = Vec::new();
+                let parsed_chain = chain.get_parsed_value_chain(&table.columns)?;
+
+                for row in table.data.iter() {
+                    match parsed_chain.check(row, &index_map) {
+                        Ok(true) => checked_rows.push(row),
+                        Ok(false) => continue,
+                        Err(e) => return Err(e),
+                    }
+                }
+
+                checked_rows
+            },
             None => table.data.iter().collect(),
         };
 
@@ -82,15 +95,15 @@ impl Database {
         let exclude = select.get_exclude();
         let keep_indexes = match exclude {
             Some(exclude_columns) => {
-                let exclude_indexes = table.get_column_indicies(&exclude_columns)?;
-                let keep_indexes = table.get_column_indicies(&query_columns)?;
+                let exclude_indexes = table.get_column_indexes(&exclude_columns)?;
+                let keep_indexes = table.get_column_indexes(&query_columns)?;
                 let indexes = keep_indexes
                     .into_iter()
                     .filter(|e| !exclude_indexes.contains(e))
                     .collect::<Vec<_>>();
                 indexes
             },
-            None => table.get_column_indicies(&query_columns)?,
+            None => table.get_column_indexes(&query_columns)?,
         };
 
 
