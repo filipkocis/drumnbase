@@ -283,8 +283,10 @@ impl FromBytes for Value {
                 let v = NumericValue::from_bytes(bytes, numeric_type)?;
                 Value::Numeric(v)
             },
+            // ColumnType::Timestamp(_) => todo!(),
+            ColumnType::Boolean => Value::Boolean(bytes[0] != 0),
 
-            _ => todo!()
+            _ => todo!("Value::from_bytes for {:?}", column_type)
         };
 
         Ok(value)
