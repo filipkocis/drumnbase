@@ -2,7 +2,7 @@ use std::fs;
 
 use crate::{
     parser::Schema, 
-    file::data::LoadMode, 
+    file::{data::LoadMode}, 
     basics::{column::{Column, ColumnType, NumericType, TextType}, table::Table, row::Row}, utils::log
 };
 
@@ -14,7 +14,7 @@ pub trait Parser {
 pub struct SimpleParser;
 
 impl SimpleParser {
-    fn parse_new_column(column_name: &str, column_type_str: &str, args: &[&str]) -> Result<Column, String> {
+    fn parse_new_column(column_name: &str, column_type_str: &str, args: &[&str], args_parts: &[&str]) -> Result<Column, String> {
         let column_type = match column_type_str {
             "int_u8" => ColumnType::Numeric(NumericType::IntU8),
             "int_u16" => ColumnType::Numeric(NumericType::IntU16),
@@ -65,13 +65,14 @@ impl SimpleParser {
         let mut column = Column::new(column_name, column_type);
         column.length = column_length;
 
-        for &arg in args {
+        for (i, &arg) in args.iter().enumerate() {
             let parts: Vec<&str> = arg.split("=").collect();
 
             match parts[0] {
                 "default" => {
                     if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
-                    let default_value = parts[1];
+                    let original_parts = args_parts[i].split("=").collect::<Vec<_>>();
+                    let default_value = original_parts[1];
 
                     if let Err(e) = column.validate(default_value) {
                         return Err(format!("Invalid default value. {}", e))
@@ -168,9 +169,11 @@ impl SimpleParser {
             "add" => {
                 if args.len() < 5 { return Err("Invalid table column add command arguments length".to_string()) }
                 let column_args = &mut args[4..].iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+                let column_args_parts = &mut args_parts[4..].iter().map(|&s| s).collect::<Vec<&str>>();
                 column_args.remove(0);
+                column_args_parts.remove(0);
                 let column_type = args[4].as_str();
-                let column = Self::parse_new_column(column_name, column_type, &column_args)?;
+                let column = Self::parse_new_column(column_name, column_type, &column_args, &column_args_parts)?;
                 table.columns.push(column)
             },
 
