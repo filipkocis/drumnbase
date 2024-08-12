@@ -47,13 +47,19 @@ impl SimpleParser {
                 ColumnType::Text(TextType::Fixed(fixed_length))
             },
 
+            "bool" | "boolean" => ColumnType::Boolean,
+
             _ => return Err(format!("unknown column type: {}", column_type_str).to_string())
         };
 
+        // TODO: refactor this, move outside
         let column_length = match column_type {
             ColumnType::Text(TextType::Fixed(len)) => len,
             ColumnType::Text(TextType::Char) => 1,
-            _ => 0
+            ColumnType::Numeric(NumericType::Float32) => 4,
+            ColumnType::Numeric(NumericType::IntU32) => 4,
+            ColumnType::Boolean => 1,
+            _ => todo!("column length for type: {:?}", column_type)
         };
 
         let mut column = Column::new(column_name, column_type);
@@ -67,15 +73,11 @@ impl SimpleParser {
                     if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
                     let default_value = parts[1];
 
-                    match column.data_type {
-                        ColumnType::Numeric(_) => {
-                            if default_value.parse::<f64>().is_err() {
-                                return Err(format!("Invalid default value for numeric column: {}", default_value));
-                            };
-                        },
-                        _ => { }
-                    };
-                    column.default = default_value.to_string();
+                    if let Err(e) = column.validate(default_value) {
+                        return Err(format!("Invalid default value. {}", e))
+                    }
+
+                    column.default = Some(default_value.to_string());
                 },
                 "not_null" => column.not_null = true,
                 "unique" => column.unique = true,
