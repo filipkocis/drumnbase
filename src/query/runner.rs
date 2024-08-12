@@ -1,4 +1,4 @@
-use crate::{database::database::Database, query::query::QueryType, file::data::LoadMode, basics::row::Row};
+use crate::{database::database::Database, query::query::QueryType, file::{data::LoadMode, write::DatabaseWriter}, basics::row::Row};
 
 use super::{parser::{SimpleQueryParser, QueryParser}, query::{Query, QueryResult, InsertQuery, UpdateQuery, DeleteQuery, SelectQuery}};
 
@@ -60,6 +60,7 @@ impl Database {
         let where_chain = select.get_where();
         let mut checked_rows: Vec<&Row> = match where_chain {
             Some(chain) => {
+                // TODO: if where clause has columns which are not selected, it errors, FIXME
                 let index_map = table.get_column_map(&query_columns)?;
                 let mut checked_rows = Vec::new();
                 let parsed_chain = chain.get_parsed_value_chain(&table.columns)?;
@@ -117,8 +118,34 @@ impl Database {
         Ok(QueryResult::from(selected_rows))
     }
         
+    // TODO: implement UNIQUE constraint
     fn insert(&mut self, table: &str, insert: &InsertQuery) -> Result<QueryResult, String> {
-        todo!()
+        let table = self.get_table_mut(table).ok_or(format!("Table '{}' not found", table))?;
+        let query_columns = insert.get_keys();
+
+        // check if all columns from the query exist
+        table.check_columns_exist(&query_columns)?;
+
+        // check if all needed columns are present, if not, return error
+        let missing_columns = table.columns
+            .iter()
+            .filter(|&column| 
+                !query_columns.contains(&column.name) && column.not_null && column.default.is_none(),
+            )
+            .map(|column| column.name.clone())
+            .collect::<Vec<_>>();
+
+        if !missing_columns.is_empty() {
+            return Err(format!("Missing columns: {:?}", missing_columns))
+        }
+
+        let new_row = table.create_row(&insert.key_vals)?; 
+
+        // add new row to the table buffer, then write to disk/memory
+        table.data.buf_rows.push(new_row.clone());
+        table.write()?;
+
+        Ok(QueryResult::from(vec![new_row]))
     }
 
     fn update(&mut self, table: &str, update: &UpdateQuery) -> Result<QueryResult, String> {
