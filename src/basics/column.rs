@@ -129,7 +129,7 @@ pub struct Column {
     pub name: String,
     pub data_type: ColumnType,
     pub length: u32,
-    pub default: String,
+    pub default: Option<String>,
     pub not_null: bool,
     pub unique: bool,
     pub read_only: bool,
@@ -147,7 +147,7 @@ impl Column {
             name: name.to_owned(),
             data_type,
             length: 0,
-            default: String::new(),
+            default: None,
             not_null: false,
             unique: false,
             read_only: false,
@@ -160,5 +160,17 @@ impl Column {
 
     pub fn validate(&self, value: &str) -> Result<Value, String> {
         self.data_type.parse(value)
+    }
+
+    pub fn validate_option(&self, value: &Option<String>) -> Result<Value, String> {
+        if let Some(value) = value {
+            return self.validate(&value)
+        } else {
+            if self.not_null {
+                return Err(format!("Column '{}' does not allow NULL values", self.name))
+            }
+
+            Ok(Value::Null)
+        }
     }
 }
