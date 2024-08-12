@@ -1,6 +1,8 @@
 use std::{path::PathBuf, collections::HashMap};
 
-use crate::{basics::column::Column, file::data::Data, utils::log};
+use crate::{basics::column::Column, file::data::Data, utils::log, query::query::KeyVal};
+
+use super::row::Row;
 
 #[derive(Debug)]
 pub struct Table {
@@ -83,7 +85,7 @@ impl Table {
     pub fn print_columns(&self) {
         for column in &self.columns {
             print!("COLUMN '{}' TYPE '{:?}' ", column.name, column.data_type);
-            if !column.default.is_empty() { print!("DEFAULT='{}' ", column.default); }
+            if !column.default.is_some() { print!("DEFAULT='{}' ", column.default.as_ref().unwrap()); }
             if column.not_null { print!("NOTNULL "); }
             if column.unique { print!("UNIQUE "); }
             if column.read_only { print!("READONLY "); }
@@ -147,6 +149,33 @@ impl Table {
         }
 
         Ok(indexes)
+    }
+
+    pub fn create_row(&self, values: &Vec<KeyVal>) -> Result<Row, String> {
+        let mut row = Row::new();
+
+        for (i, column) in self.columns.iter().enumerate() {
+            // get value form keyval, or default if not found. If there is no default and the
+            // column is not nullable, return an error
+            let value = match values.iter().find(|kv| kv.key == column.name) {
+                Some(kv) => Some(kv.val.clone()),
+                None => match column.default {
+                    Some(ref default) => Some(default.clone()),
+                    None => match column.not_null {
+                        true => return Err(format!("Column '{}' does not allow NULL values", column.name)),
+                        false => None,
+                    }
+                }
+            };
+
+            // validate and parse the value into the correct type
+            let value = column.validate_option(&value)?;
+
+            // set the value in the row at the correct column position
+            row.set(i, value)
+        }
+
+        Ok(row)
     }
 }
 
