@@ -37,4 +37,8 @@ impl Database {
     pub fn get_table(&self, name: &str) -> Option<&Table> {
         self.tables.iter().find(|table| table.name == name)
     }
+
+    pub fn get_table_mut(&mut self, name: &str) -> Option<&mut Table> {
+        self.tables.iter_mut().find(|table| table.name == name)
+    }
 }
