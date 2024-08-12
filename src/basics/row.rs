@@ -258,6 +258,12 @@ impl FromBytes for Value {
     type EnumType = ColumnType;
 
     fn from_bytes(bytes: &[u8], column_type: &ColumnType) -> Result<Self, String> {
+        // HINT: temporary solution for NULL values, currently only for Text
+        // TODO: implement a different way to store NULL values
+        if matches!(column_type, ColumnType::Text(_)) && bytes.iter().all(|b| *b == 0) {
+            return Ok(Value::Null)
+        }
+
         let value = match column_type {
             ColumnType::Text(text_type) => {
                 let map_err = |e: FromUtf8Error| e.to_string();

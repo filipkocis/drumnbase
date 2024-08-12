@@ -170,6 +170,8 @@ impl Column {
                 return Err(format!("Column '{}' does not allow NULL values", self.name))
             }
 
+            // TODO: check default value
+            // TODO: check unique value
             Ok(Value::Null)
         }
     }
