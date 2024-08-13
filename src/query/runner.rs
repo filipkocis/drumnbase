@@ -53,13 +53,11 @@ impl Database {
         let where_chain = select.get_where();
         let mut checked_rows: Vec<&Row> = match where_chain {
             Some(chain) => {
-                // TODO: if where clause has columns which are not selected, it errors, FIXME
-                let index_map = table.get_column_map(&query_columns)?;
                 let mut checked_rows = Vec::new();
                 let parsed_chain = chain.get_parsed_value_chain(&table.columns)?;
 
                 for row in table.data.iter() {
-                    match parsed_chain.check(row, &index_map) {
+                    match parsed_chain.check(row) {
                         Ok(true) => checked_rows.push(row),
                         Ok(false) => continue,
                         Err(e) => return Err(e),

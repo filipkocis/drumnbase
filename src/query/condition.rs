@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::basics::{row::{Row, Value}, column::{ColumnType, Column}};
 
 #[derive(Debug)]
@@ -31,6 +29,7 @@ struct ConditionParsed {
     column: String,
     operator: ConditionOperator,
     value: Value,
+    index: usize, // index of the column in the table
 }
 
 #[derive(Debug)]
@@ -55,7 +54,7 @@ impl ConditionChainValueParsed {
 }
 
 impl ConditionChainParsed {
-    pub fn check(&self, row: &Row, indexes: &HashMap<String, usize>) -> Result<bool, String> {
+    pub fn check(&self, row: &Row) -> Result<bool, String> {
         let mut result = false;
         let mut chain_operator = &ConditionChainValueParsed::Or;
 
@@ -77,11 +76,9 @@ impl ConditionChainParsed {
             }
 
             let condition = condition.get_condition().unwrap();
-            let column_index = indexes.get(condition.column.as_str()).ok_or(format!("Column '{}' not found", condition.column))?;
-            let cell = row.get(*column_index).ok_or(format!("Column '{}' at '{}' not found", condition.column, column_index))?;
-            let condition_value = &condition.value;
+            let cell = row.get(condition.index).ok_or(format!("Column '{}' at '{}' not found", condition.column, condition.index))?;
 
-            let check = condition.operator.check(cell, condition_value); 
+            let check = condition.operator.check(cell, &condition.value); 
             result = chain_operator.evaluate(result, check);
         }
 
@@ -138,7 +135,7 @@ impl ConditionChainValue {
                     .ok_or(format!("Column '{}' not found", condition.column))?
                     .data_type;
 
-                let parsed = condition.into_parsed_value(column_type)?;
+                let parsed = condition.into_parsed_value(column_type, columns)?;
                 ConditionChainValueParsed::Condition(parsed)
             },
             ConditionChainValue::And => ConditionChainValueParsed::And,
@@ -158,13 +155,14 @@ pub struct Condition {
 }
 
 impl Condition {
-    fn into_parsed_value(&self, column_type: &ColumnType) -> Result<ConditionParsed, String> {
+    fn into_parsed_value(&self, column_type: &ColumnType, columns: &Vec<Column>) -> Result<ConditionParsed, String> {
         let column = self.column.clone();
         let operator = self.operator.clone();
         let value = column_type.parse(&self.value)?;
+        let index = columns.iter().position(|c| c.name == column).ok_or(format!("Column '{}' not found", column))?;
 
         Ok(ConditionParsed {
-            column, operator, value
+            column, operator, value, index
         })
     }
 }
