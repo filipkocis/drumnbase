@@ -56,6 +56,14 @@ impl Data {
     pub fn iter(&self) -> std::slice::Iter<Row> {
         self.rows.iter()
     }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Row> {
+        self.rows.get_mut(index)
+    }
+
+    pub fn len(&self) -> usize {
+        self.rows.len()
+    }
 }
 
 impl Data {
