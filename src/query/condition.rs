@@ -76,7 +76,10 @@ impl ConditionChainParsed {
             }
 
             let condition = condition.get_condition().unwrap();
-            let cell = row.get(condition.index).ok_or(format!("Column '{}' at '{}' not found", condition.column, condition.index))?;
+            let cell = match row.get(condition.index) {
+                Some(cell) => cell,
+                None => return Err(format!("Column '{}' at '{}' not found", condition.column, condition.index))
+            };
 
             let check = condition.operator.check(cell, &condition.value); 
             result = chain_operator.evaluate(result, check);
