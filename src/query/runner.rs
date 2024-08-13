@@ -3,26 +3,18 @@ use crate::{database::database::Database, query::query::QueryType, file::{data::
 use super::{parser::{SimpleQueryParser, QueryParser}, query::{Query, QueryResult, InsertQuery, UpdateQuery, DeleteQuery, SelectQuery}};
 
 pub trait QueryRunner {
-    fn run_query(&mut self, query: &str) -> Result<(), String>;
+    fn run_query(&mut self, query: &str) -> Result<QueryResult, String>;
 }
 
 impl QueryRunner for Database {
-    fn run_query(&mut self, query: &str) -> Result<(), String> {
+    fn run_query(&mut self, query: &str) -> Result<QueryResult, String> {
         let query = query.trim();
-        if query.is_empty() { return Ok(()); }
+        if query.is_empty() { return Err("Empty string".to_string()) }
         
         let query = SimpleQueryParser::from(query)?.parse()?;
-        println!("{:#?}", query);
         let result = query.apply_to(self)?;
 
-        println!();
-        println!("AMOUNT: {:#?}", result.amount);
-        for row in result.data.iter() {
-            println!("ROW: {}", row);
-        }
-        println!();
-
-        Ok(())
+        Ok(result)
     }
 }
 
