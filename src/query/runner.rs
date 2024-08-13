@@ -12,6 +12,7 @@ impl QueryRunner for Database {
         if query.is_empty() { return Err("Empty string".to_string()) }
         
         let query = SimpleQueryParser::from(query)?.parse()?;
+        println!("{:#?}", query);
         let result = query.apply_to(self)?;
 
         Ok(result)
@@ -110,7 +111,6 @@ impl Database {
         Ok(QueryResult::from(selected_rows))
     }
         
-    // TODO: implement UNIQUE constraint
     fn insert(&mut self, table: &str, insert: &InsertQuery) -> Result<QueryResult, String> {
         let table = self.get_table_mut(table).ok_or(format!("Table '{}' not found", table))?;
         let query_columns = insert.get_keys();
@@ -132,6 +132,9 @@ impl Database {
         }
 
         let new_row = table.create_row(&insert.key_vals)?; 
+
+        // check if the row passes all unique constraints 
+        table.check_unique(&new_row)?;
 
         // add new row to the table buffer, then write to disk/memory
         table.data.buf_rows.push(new_row.clone());

@@ -177,6 +177,22 @@ impl Table {
 
         Ok(row)
     }
+
+    pub fn check_unique(&self, row: &Row) -> Result<(), String> {
+        if self.columns.len() != row.len() {
+            return Err(format!("Row does not match table '{}' column count ({}/{})", self.name, row.len(), self.columns.len()))
+        }
+
+        for (i, column) in self.columns.iter().enumerate() {
+            if column.unique {
+                let value = row.get(i).unwrap();
+                if self.data.iter().any(|r| r.get(i).unwrap() == value) {
+                    return Err(format!("Value '{}' for column '{}' is not unique", value, column.name));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Default for Table {
