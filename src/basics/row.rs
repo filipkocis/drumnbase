@@ -134,6 +134,12 @@ impl Row {
         self.values[index] = value;
     }
 
+    pub fn update_with(&mut self, new_values: &Vec<(usize, Value)>) {
+        for (column_index, value) in new_values {
+            self.set(*column_index, value.clone());
+        }
+    }
+
     pub fn remove(&mut self, index: usize) -> Option<Value> {
         if index >= self.values.len() { return None; }
         Some(self.values.remove(index))
@@ -197,7 +203,7 @@ impl Row {
     }
 }
 
-trait ToBytes {
+pub trait ToBytes {
     fn to_bytes(&self, length: u32) -> Vec<u8>;
 }
 
