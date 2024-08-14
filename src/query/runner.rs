@@ -168,16 +168,21 @@ impl Database {
         let parsed_key_vals = update.get_parsed_key_vals(&table.columns)?;
         let column_indexes = parsed_key_vals.iter().map(|(i, _)| *i).collect();
 
+        let mut updated_rows_count = 0;
+
         for index in 0..table.data.len() {
             let row = table.data.get_mut(index).unwrap();
             
             if where_chain.check(row)? {
                 row.update_with(&parsed_key_vals); 
                 table.sync_row_parts(index, &column_indexes)?;
+                updated_rows_count += 1;
             }
         }
 
-        Ok(QueryResult::from(vec![]))
+        let mut query_result = QueryResult::from(vec![]);
+        query_result.amount = updated_rows_count;
+        Ok(query_result)
     }
 
     fn delete(&mut self, table: &str, delete: &DeleteQuery) -> Result<QueryResult, String> {
