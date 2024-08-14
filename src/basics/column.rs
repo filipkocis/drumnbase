@@ -158,10 +158,13 @@ impl Column {
         self.length = length;
     }
 
+    /// Validates and parses a string value into Value 
     pub fn validate(&self, value: &str) -> Result<Value, String> {
         self.data_type.parse(value)
     }
 
+    /// Validates and parses a string value into Value, 
+    /// if string value is None, it returns Value::Null if possible
     pub fn validate_option(&self, value: &Option<String>) -> Result<Value, String> {
         if let Some(value) = value {
             return self.validate(&value)
@@ -170,8 +173,6 @@ impl Column {
                 return Err(format!("Column '{}' does not allow NULL values", self.name))
             }
 
-            // TODO: check default value
-            // TODO: check unique value
             Ok(Value::Null)
         }
     }

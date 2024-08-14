@@ -81,7 +81,6 @@ impl Table {
             })
             .collect::<Vec<_>>();
     
-        // TODO
         // columns are sorted, so we can iterate and seek through them in order
         for (column_index, buffer) in buffers_with_col_idx {
             let column_offset = self.get_column_offset(column_index)?;
