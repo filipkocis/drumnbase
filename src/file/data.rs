@@ -1,4 +1,4 @@
-use std::{path::PathBuf, io::{BufReader, BufWriter, Write, Read}, fs::File};
+use std::{path::PathBuf, io::{BufReader, BufWriter, Write, Read, SeekFrom, Seek}, fs::File};
 
 use crate::{basics::{row::{Row}, column::Column}, utils::log};
 
@@ -17,6 +17,47 @@ pub struct Data {
     path: Option<PathBuf>,
     loaded: bool,
     pub load_mode: LoadMode,
+}
+
+impl Data {
+    pub fn writer_seek_end(&mut self) -> Result<(), String> {
+        if !self.loaded { return Err("Data not loaded".to_string()) }
+
+        let writer = self.writer.as_mut().unwrap();
+        writer.seek(SeekFrom::End(0)).map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    /// Seeks the writer to the given position from the start
+    pub fn writer_seek(&mut self, pos: u64) -> Result<(), String> {
+        if !self.loaded { return Err("Data not loaded".to_string()) }
+
+        let writer = self.writer.as_mut().unwrap();
+        writer.seek(SeekFrom::Start(pos)).map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    /// Writes the buffer, does not seek or flush
+    pub fn writer_write(&mut self, buf: &[u8]) -> Result<(), String> {
+        if !self.loaded { return Err("Data not loaded".to_string()) }
+
+        let writer = self.writer.as_mut().unwrap();
+        writer.write_all(buf).map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    /// Flushes the writer
+    pub fn writer_flush(&mut self) -> Result<(), String> {
+        if !self.loaded { return Err("Data not loaded".to_string()) }
+
+        let writer = self.writer.as_mut().unwrap();
+        writer.flush().map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
 }
 
 impl Data {
@@ -59,6 +100,10 @@ impl Data {
 
     pub fn get_mut(&mut self, index: usize) -> Option<&mut Row> {
         self.rows.get_mut(index)
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Row> {
+        self.rows.get(index)
     }
 
     pub fn len(&self) -> usize {
