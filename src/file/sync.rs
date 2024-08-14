@@ -81,8 +81,6 @@ impl Table {
             })
             .collect::<Vec<_>>();
     
-        self.data.writer_seek(row_offset as u64)?;
-
         // TODO
         // columns are sorted, so we can iterate and seek through them in order
         for (column_index, buffer) in buffers_with_col_idx {
