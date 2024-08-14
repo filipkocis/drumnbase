@@ -1,4 +1,4 @@
-use crate::{database::database::Database, query::query::QueryType, file::{data::LoadMode, write::DatabaseWriter}, basics::row::Row};
+use crate::{database::database::Database, query::query::QueryType, file::{data::LoadMode, write::DatabaseWriter}, basics::row::{Row, Value}};
 
 use super::{parser::{SimpleQueryParser, QueryParser}, query::{Query, QueryResult, InsertQuery, UpdateQuery, DeleteQuery, SelectQuery}};
 
@@ -142,7 +142,42 @@ impl Database {
     }
 
     fn update(&mut self, table: &str, update: &UpdateQuery) -> Result<QueryResult, String> {
-        todo!()
+        if !update.is_valid() {
+            return Err("Invalid update query".to_string())
+        }
+
+        let table = self.get_table_mut(table).ok_or(format!("Table '{}' not found", table))?;
+        let query_columns = update.get_keys(); 
+
+        // check if all columns from the query exist
+        table.check_columns_exist(&query_columns)?;
+
+        // check if any of the columns have unique constraints
+        let unique_columns = query_columns
+            .iter()
+            .filter(|&column| table.get_column(column).unwrap().unique)
+            .collect::<Vec<_>>();
+
+        if !unique_columns.is_empty() {
+            // TODO: implement 'limit single'
+            return Err(format!("Columns '{:?}' have unique constraint, to update such columns, use 'limit single'", unique_columns))
+        }
+
+        // get the parsed where chain, Values, and their respective column indexes
+        let where_chain = update.conditions.get_parsed_value_chain(&table.columns)?;
+        let parsed_key_vals = update.get_parsed_key_vals(&table.columns)?;
+        let column_indexes = parsed_key_vals.iter().map(|(i, _)| *i).collect();
+
+        for index in 0..table.data.len() {
+            let row = table.data.get_mut(index).unwrap();
+            
+            if where_chain.check(row)? {
+                row.update_with(&parsed_key_vals); 
+                table.sync_row_parts(index, &column_indexes)?;
+            }
+        }
+
+        Ok(QueryResult::from(vec![]))
     }
 
     fn delete(&mut self, table: &str, delete: &DeleteQuery) -> Result<QueryResult, String> {
