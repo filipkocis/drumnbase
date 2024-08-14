@@ -20,6 +20,14 @@ pub struct Data {
 }
 
 impl Data {
+    /// Appends the buffer to memory rows, leaving it empty
+    pub fn buffer_apply(&mut self) {
+        self.rows.append(&mut self.buf_rows)
+    }
+}
+
+impl Data {
+    /// Seeks the writer to the end
     pub fn writer_seek_end(&mut self) -> Result<(), String> {
         if !self.loaded { return Err("Data not loaded".to_string()) }
 
@@ -66,7 +74,7 @@ impl Data {
 
         log::info(format!("loading data from '{}'", path.display()));
 
-        let writer_file = File::options().append(true).create(true).open(&path).unwrap();
+        let writer_file = File::options().write(true).create(true).open(&path).unwrap();
         let reader_file = File::options().read(true).open(&path).unwrap();
 
         let reader = BufReader::new(reader_file);

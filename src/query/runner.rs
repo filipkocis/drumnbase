@@ -136,7 +136,7 @@ impl Database {
 
         // add new row to the table buffer, then write to disk/memory
         table.data.buf_rows.push(new_row.clone());
-        table.write()?;
+        table.sync_buffer()?;
 
         Ok(QueryResult::from(vec![new_row]))
     }

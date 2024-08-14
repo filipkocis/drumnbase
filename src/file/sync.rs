@@ -42,6 +42,23 @@ impl Table {
 }
 
 impl Table {
+    /// Syncs the buffer with the disk and memory, leaving it empty
+    pub fn sync_buffer(&mut self) -> Result<(), String> {
+        self.data.writer_seek_end()?;
+        if self.data.buf_rows.len() == 0 { return Ok(()) }
+
+        for index in 0..self.data.buf_rows.len() {
+            let row = &self.data.buf_rows[index];
+            let row_bytes = row.convert_to_bytes(&self.columns);
+            self.data.writer_write(&row_bytes)?; 
+        }
+       
+        self.data.buffer_apply();
+        self.data.writer_flush()?;
+
+        Ok(())
+    }
+
     /// Syncs the row at the given index with the disk
     pub fn sync_row(&mut self, index: usize) {
         todo!()
@@ -73,7 +90,7 @@ impl Table {
 
             self.data.writer_seek((row_offset + column_offset) as u64)?;
             self.data.writer_write(&buffer)?;
-            // self.data.writer_flush()?;
+            self.data.writer_flush()?;
         }
 
         Ok(())
