@@ -180,12 +180,35 @@ impl Database {
             }
         }
 
-        let mut query_result = QueryResult::from(vec![]);
-        query_result.amount = updated_rows_count;
+        let query_result = QueryResult::with_amount(updated_rows_count);
         Ok(query_result)
     }
 
     fn delete(&mut self, table: &str, delete: &DeleteQuery) -> Result<QueryResult, String> {
-        todo!()
+        if !delete.is_valid() {
+            return Err("Invalid delete query".to_string());
+        }
+
+        let table = self.get_table_mut(table).ok_or(format!("Table '{}' not found", table))?;
+        let where_chain = delete.conditions.get_parsed_value_chain(&table.columns)?;
+
+        let mut deleted_rows_count = 0;
+
+        for index in 0..table.data.len() {
+            if delete.limit.is_some() && deleted_rows_count >= delete.limit.unwrap() {
+                break;
+            }
+
+            let row = table.data.get_mut(index).unwrap(); 
+
+            if where_chain.check(row)? {
+                row.mark_deleted(); 
+                table.sync_flags(index)?;
+                deleted_rows_count += 1;
+            }
+        }
+
+        let query_result = QueryResult::with_amount(deleted_rows_count);
+        Ok(query_result)
     }
 }

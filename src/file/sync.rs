@@ -1,8 +1,4 @@
-use std::io::SeekFrom;
-
 use crate::basics::{table::Table, row::ToBytes};
-
-use super::data::Data;
 
 impl Table {
     pub fn get_row_prefix_length(&self) -> usize {
@@ -89,6 +85,19 @@ impl Table {
             self.data.writer_write(&buffer)?;
             self.data.writer_flush()?;
         }
+
+        Ok(())
+    }
+
+    /// Syncs rows flags at 'index' with the disk
+    pub fn sync_flags(&mut self, index: usize) -> Result<(), String> {
+        let row_offset = self.get_row_offset(index)?;
+        let row = self.data.get(index).unwrap(); 
+        let flags = row.get_flags();
+        
+        self.data.writer_seek(row_offset as u64)?;
+        self.data.writer_write(&[flags])?;
+        self.data.writer_flush()?; 
 
         Ok(())
     }
