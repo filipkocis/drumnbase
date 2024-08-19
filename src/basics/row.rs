@@ -106,16 +106,41 @@ impl Value {
     }
 }
 
+const NULL_BYTE: u8 = 0;
+const EMPTY_FLAGS: u8 = 0;
+const DELETED_FLAG: u8 = 1;
+// const UNUSED_FLAG_2: u8 = 2;
+// const UNUSED_FLAG_3: u8 = 4;
+// const UNUSED_FLAG_4: u8 = 8;
+// const UNUSED_FLAG_5: u8 = 16;
+// const UNUSED_FLAG_6: u8 = 32;
+// const UNUSED_FLAG_7: u8 = 64;
+// const UNUSED_FLAG_8: u8 = 128;
+
 #[derive(Debug, Clone)]
 pub struct Row {
     values: Vec<Value>,
+    flags: u8,
 }
 
 impl Row {
     pub fn new() -> Row {
         Row {
             values: Vec::new(),
+            flags: EMPTY_FLAGS,
         }
+    }
+
+    pub fn get_flags(&self) -> u8 {
+        self.flags
+    }
+
+    pub fn is_deleted(&self) -> bool {
+        self.flags & DELETED_FLAG != 0
+    }
+
+    pub fn mark_deleted(&mut self) {
+        self.flags |= DELETED_FLAG;
     }
 
     pub fn add(&mut self, value: Value) {
@@ -219,7 +244,7 @@ impl ToBytes for Value {
             Value::Enum(e) => e.to_bytes(length), 
             Value::UUID(u) => u.as_bytes().to_vec(), 
 
-            Value::Null => vec![0; length as usize] 
+            Value::Null => vec![NULL_BYTE; length as usize] 
         }
     }
 }
