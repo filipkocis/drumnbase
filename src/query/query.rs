@@ -15,6 +15,13 @@ impl QueryResult {
             data
         }
     }
+
+    pub fn with_amount(amount: usize) -> Self {
+        Self {
+            amount,
+            data: vec![],
+        }
+    }
 }
 
 impl Default for QueryResult {
@@ -179,6 +186,12 @@ impl UpdateQuery {
 pub struct DeleteQuery {
     pub conditions: ConditionChain,
     pub limit: Option<usize>,
+}
+
+impl DeleteQuery {
+    pub fn is_valid(&self) -> bool {
+        !self.conditions.conditions.is_empty()
+    }
 }
 
 #[derive(Debug)]
