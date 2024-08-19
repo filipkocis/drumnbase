@@ -57,6 +57,7 @@ impl Database {
                 let parsed_chain = chain.get_parsed_value_chain(&table.columns)?;
 
                 for row in table.data.iter() {
+                    if row.is_deleted() { continue }
                     match parsed_chain.check(row) {
                         Ok(true) => checked_rows.push(row),
                         Ok(false) => continue,
@@ -172,6 +173,7 @@ impl Database {
 
         for index in 0..table.data.len() {
             let row = table.data.get_mut(index).unwrap();
+            if row.is_deleted() { continue }
             
             if where_chain.check(row)? {
                 row.update_with(&parsed_key_vals); 
@@ -200,6 +202,7 @@ impl Database {
             }
 
             let row = table.data.get_mut(index).unwrap(); 
+            if row.is_deleted() { continue }
 
             if where_chain.check(row)? {
                 row.mark_deleted(); 

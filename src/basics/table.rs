@@ -186,7 +186,10 @@ impl Table {
         for (i, column) in self.columns.iter().enumerate() {
             if column.unique {
                 let value = row.get(i).unwrap();
-                if self.data.iter().any(|r| r.get(i).unwrap() == value) {
+                if self.data
+                    .iter()
+                    .filter(|r| !r.is_deleted())
+                    .any(|r| r.get(i).unwrap() == value) {
                     return Err(format!("Value '{}' for column '{}' is not unique", value, column.name));
                 }
             }
