@@ -1,6 +1,6 @@
 use std::{fmt::Display, array::TryFromSliceError, string::FromUtf8Error};
 
-use super::column::{Column, ColumnType, NumericType, TextType};
+use super::column::{Column, ColumnType, NumericType, TextType, TimestampType};
 
 impl Display for Row {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -22,6 +22,17 @@ impl Display for NumericValue {
             NumericValue::IntU64(n) => write!(f, "{}", n),
             NumericValue::Float32(n) => write!(f, "{}", n),
             NumericValue::Float64(n) => write!(f, "{}", n),
+        }
+    }
+}
+
+impl Display for TimestampValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TimestampValue::Seconds(t) => write!(f, "{}", t),
+            TimestampValue::Milliseconds(t) => write!(f, "{}", t),
+            TimestampValue::Microseconds(t) => write!(f, "{}", t),
+            TimestampValue::Nanoseconds(t) => write!(f, "{}", t),
         }
     }
 }
@@ -57,14 +68,21 @@ pub enum NumericValue {
 
     Float32(f32),
     Float64(f64),
+}
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub enum TimestampValue {
+    Seconds(u64),
+    Milliseconds(u64),
+    Microseconds(u64),
+    Nanoseconds(u64),
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
     Text(String),
     Numeric(NumericValue),
-    Timestamp(i64),
+    Timestamp(TimestampValue),
     Boolean(bool),
     Binary(Vec<u8>),
     Array(Vec<Value>),
@@ -255,7 +273,7 @@ impl ToBytes for Value {
         match self {
             Value::Text(s) => s.to_bytes(length),
             Value::Numeric(n) => n.to_bytes(length),
-            Value::Timestamp(t) => t.to_be_bytes().to_vec(),
+            Value::Timestamp(t) => t.to_bytes(length),
             Value::Boolean(b) => b.to_bytes(length),
             Value::Binary(b) => b.clone(), 
             Value::Array(a) => a.iter().flat_map(|v| v.to_bytes(length)).collect(),
@@ -288,6 +306,17 @@ impl ToBytes for NumericValue {
             NumericValue::IntU64(n) => n.to_be_bytes().to_vec(),
             NumericValue::Float32(n) => n.to_be_bytes().to_vec(),
             NumericValue::Float64(n) => n.to_be_bytes().to_vec(),
+        }
+    }
+}
+
+impl ToBytes for TimestampValue {
+    fn to_bytes(&self, _: u32) -> Vec<u8> {
+        match self {
+            TimestampValue::Seconds(n) => n.to_be_bytes().to_vec(),
+            TimestampValue::Milliseconds(n) => n.to_be_bytes().to_vec(),
+            TimestampValue::Microseconds(n) => n.to_be_bytes().to_vec(),
+            TimestampValue::Nanoseconds(n) => n.to_be_bytes().to_vec(),
         }
     }
 }
@@ -338,7 +367,10 @@ impl FromBytes for Value {
                 let v = NumericValue::from_bytes(bytes, numeric_type)?;
                 Value::Numeric(v)
             },
-            // ColumnType::Timestamp(_) => todo!(),
+            ColumnType::Timestamp(timestamp_type) => {
+                let v = TimestampValue::from_bytes(bytes, timestamp_type)?;
+                Value::Timestamp(v)
+            },
             ColumnType::Boolean => Value::Boolean(bytes[0] != 0),
 
             _ => todo!("Value::from_bytes for {:?}", column_type)
@@ -368,5 +400,22 @@ impl FromBytes for NumericValue {
         };
 
         Ok(numeric_value)
+    }
+}
+
+impl FromBytes for TimestampValue {
+    type EnumType = TimestampType;
+
+    fn from_bytes(bytes: &[u8], timestamp_type: &Self::EnumType) -> Result<Self, String> where Self: Sized {
+        let map_err = |e: TryFromSliceError| e.to_string(); 
+
+        let timestamp_value = match timestamp_type {
+            TimestampType::Seconds => TimestampValue::Seconds(u64::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            TimestampType::Milliseconds => TimestampValue::Milliseconds(u64::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            TimestampType::Microseconds => TimestampValue::Microseconds(u64::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+            TimestampType::Nanoseconds => TimestampValue::Nanoseconds(u64::from_be_bytes(bytes.try_into().map_err(map_err)?)),
+        };
+
+        Ok(timestamp_value)
     }
 }

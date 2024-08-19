@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use super::row::{Value, NumericValue};
+use super::row::{Value, NumericValue, TimestampValue};
 
 #[derive(Debug)]
 pub enum TextType {
@@ -27,10 +27,12 @@ pub enum NumericType {
 
 #[derive(Debug)]
 pub enum TimestampType {
-    Date,
-    Time,
-    DateTime,
-    TimeStamp,
+    Seconds,
+    Milliseconds,
+    Microseconds,
+    Nanoseconds,
+    // Date,
+    // Time,
 }
 
 
@@ -87,7 +89,12 @@ impl TextType {
 
 impl TimestampType {
     pub fn parse(&self, value: &str) -> Result<Value, String> {
-        todo!()
+        match self {
+            TimestampType::Seconds => value.parse::<u64>().map(|v| Value::Timestamp(TimestampValue::Seconds(v))).map_err(|e| e.to_string()),
+            TimestampType::Milliseconds => value.parse::<u64>().map(|v| Value::Timestamp(TimestampValue::Milliseconds(v))).map_err(|e| e.to_string()),
+            TimestampType::Microseconds => value.parse::<u64>().map(|v| Value::Timestamp(TimestampValue::Microseconds(v))).map_err(|e| e.to_string()),
+            TimestampType::Nanoseconds => value.parse::<u64>().map(|v| Value::Timestamp(TimestampValue::Nanoseconds(v))).map_err(|e| e.to_string()),
+        }
     }
 }
 

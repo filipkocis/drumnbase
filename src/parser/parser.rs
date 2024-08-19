@@ -3,7 +3,7 @@ use std::fs;
 use crate::{
     parser::Schema, 
     file::{data::LoadMode}, 
-    basics::{column::{Column, ColumnType, NumericType, TextType}, table::Table, row::Row}, utils::log
+    basics::{column::{Column, ColumnType, NumericType, TextType, TimestampType}, table::Table, row::Row}, utils::log
 };
 
 pub trait Parser {
@@ -47,6 +47,18 @@ impl SimpleParser {
                 ColumnType::Text(TextType::Fixed(fixed_length))
             },
 
+            t if t.starts_with("time_") => {
+                let time_type = match t {
+                    "time_secs" => TimestampType::Seconds,
+                    "time_millis" => TimestampType::Milliseconds,
+                    "time_micros" => TimestampType::Microseconds,
+                    "time_nanos" => TimestampType::Nanoseconds,
+                    _ => return Err(format!("unknown time type: {}", t))
+                };
+
+                ColumnType::Timestamp(time_type)
+            }
+
             "bool" | "boolean" => ColumnType::Boolean,
 
             _ => return Err(format!("unknown column type: {}", column_type_str).to_string())
@@ -58,6 +70,7 @@ impl SimpleParser {
             ColumnType::Text(TextType::Char) => 1,
             ColumnType::Numeric(NumericType::Float32) => 4,
             ColumnType::Numeric(NumericType::IntU32) => 4,
+            ColumnType::Timestamp(TimestampType::Milliseconds) => 8,
             ColumnType::Boolean => 1,
             _ => todo!("column length for type: {:?}", column_type)
         };
@@ -73,6 +86,15 @@ impl SimpleParser {
                     if parts.len() !=2 { return Err("Invalid column length argument".to_string()) }
                     let original_parts = args_parts[i].split("=").collect::<Vec<_>>();
                     let default_value = original_parts[1];
+
+                    // TODO: refactor this, this is a quick hack/fix
+                    if matches!(column.data_type, ColumnType::Timestamp(TimestampType::Milliseconds)) {
+                        if default_value.to_lowercase() == "now()" {
+                            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis().to_string();
+                            column.default = Some(now);
+                            continue;
+                        } 
+                    }
 
                     if let Err(e) = column.validate(default_value) {
                         return Err(format!("Invalid default value. {}", e))
