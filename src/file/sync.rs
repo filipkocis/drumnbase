@@ -1,16 +1,17 @@
 use crate::basics::{table::Table, row::ToBytes};
 
 impl Table {
-    pub fn get_row_prefix_length(&self) -> usize {
-        // TODO: in the future, this will include bits for the row's metadata
-        0     
+    /// Returns the number of bytes prefixing each row (metadata, flags, etc.)
+    pub fn get_row_prefix_length() -> usize {
+        // flags - 1 byte
+        1
     }
 
     pub fn get_row_length(&self) -> usize {
         self.columns
             .iter()
             .fold(
-                self.get_row_prefix_length(), 
+                Self::get_row_prefix_length(), 
                 |acc, column| acc + column.length as usize
             )
     }
@@ -20,7 +21,7 @@ impl Table {
             return Err(format!("Column index out of bounds: {}", column_index))
         }
 
-        let mut offset = self.get_row_prefix_length();
+        let mut offset = Self::get_row_prefix_length();
         for i in 0..column_index {
             offset += self.columns[i].length as usize;
         }

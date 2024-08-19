@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{BufReader, BufWriter, Write, Read, SeekFrom, Seek}, fs::File};
 
-use crate::{basics::{row::{Row}, column::Column}, utils::log};
+use crate::{basics::{row::{Row}, column::Column, table::Table}, utils::log};
 
 #[derive(Debug, PartialEq)]
 pub enum LoadMode {
@@ -154,8 +154,8 @@ impl Data {
 
         let reader = self.reader.as_mut().unwrap();
 
-        let entry_size = columns.iter().fold(0, |acc, c| acc + c.length);
-        let mut buf = vec![0u8; entry_size as usize];
+        let entry_size = Table::get_row_prefix_length() + columns.iter().fold(0, |acc, c| acc + c.length) as usize;
+        let mut buf = vec![0u8; entry_size];
 
         let mut i = 0;
         while let Ok(_) = reader.read_exact(buf.as_mut()) {

@@ -131,6 +131,12 @@ impl Row {
         }
     }
 
+    pub fn with_flags(flags: u8) -> Row {
+        let mut row = Row::new();
+        row.flags = flags;
+        row
+    }
+
     pub fn get_flags(&self) -> u8 {
         self.flags
     }
@@ -187,16 +193,27 @@ impl Row {
     }
 
     pub fn convert_to_bytes(&self, columns: &Vec<Column>) -> Vec<u8> {
-        self.values.iter().enumerate().flat_map(|(i, v)| {
+        let mut bytes = vec![self.flags];
+
+        let values = self.values.iter().enumerate().flat_map(|(i, v)| {
             let length = columns[i].length;
             v.to_bytes(length)
-        }).collect()
+        });
+
+        bytes.extend(values);
+
+        bytes
     }
 
     pub fn convert_from_bytes(bytes: &[u8], columns: &Vec<Column>) -> Result<Self, String> {
         let mut row = Row::new();
         let mut offset = 0;
 
+        // convert prefix
+        row.flags = bytes[offset];
+        offset += 1;
+
+        // convert values
         for column in columns {
             let length = column.length as usize;
             let value = Value::from_bytes(&bytes[offset..offset + length], &column.data_type)?;
@@ -207,8 +224,9 @@ impl Row {
         Ok(row)
     }
 
+    /// Returns a new row without the columns at the given indexes.
     pub fn with_excluded_columns(&self, indexes: &[usize]) -> Row {
-        let mut row = Row::new();
+        let mut row = Row::with_flags(self.flags);
         self.values.iter().enumerate().for_each(|(i, v)| {
             if !indexes.contains(&i) {
                 row.add(v.clone());
@@ -220,7 +238,7 @@ impl Row {
     /// Returns a new row with only the columns at the given indexes.
     /// Panics if any of the indexes are out of bounds
     pub fn with_kept_columns(&self, indexes: &[usize]) -> Row {
-        let mut row = Row::new();
+        let mut row = Row::with_flags(self.flags);
         indexes.iter().for_each(|&i| {
             row.add(self.values[i].clone());
         });
