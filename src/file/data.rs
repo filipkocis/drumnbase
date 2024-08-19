@@ -24,6 +24,11 @@ impl Data {
     pub fn buffer_apply(&mut self) {
         self.rows.append(&mut self.buf_rows)
     }
+
+    /// Removes rows marked as deleted from memory
+    pub fn purge_deleted_rows(&mut self) {
+        self.rows.retain(|r| !r.is_deleted()) 
+    }
 }
 
 impl Data {
@@ -66,6 +71,21 @@ impl Data {
 
         Ok(())
     }
+
+    /// Truncates the underlying file to the current writer position
+    pub fn writer_truncate(&mut self) -> Result<(), String> {
+        if !self.loaded { return Err("Data not loaded".to_string()) }
+
+        self.writer_flush()?;
+
+        let writer = self.writer.as_mut().unwrap();
+        let writer_pos = writer.seek(SeekFrom::Current(0)).map_err(|e| e.to_string())?;
+        let file = writer.get_mut();
+
+        file.set_len(writer_pos).map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
 }
 
 impl Data {
@@ -102,6 +122,8 @@ impl Data {
         self.buf_rows.is_empty()
     }
 
+    /// returns an iterator over the rows
+    /// WARN: it also returns deleted rows
     pub fn iter(&self) -> std::slice::Iter<Row> {
         self.rows.iter()
     }
