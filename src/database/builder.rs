@@ -1,4 +1,5 @@
 use crate::basics::table::Table;
+use crate::file::purge::Purge;
 use crate::file::read::DatabaseReader;
 use crate::file::write::DatabaseWriter;
 use crate::parser::Schema;
@@ -112,7 +113,8 @@ impl DatabaseBuilder {
         schema.read()?;
         schema.write()?;
 
-        let database = Database::from_schema(&self.name, &self.root_dir, schema);
+        let mut database = Database::from_schema(&self.name, &self.root_dir, schema);
+        database.purge()?;
 
         log::success(format!("loaded database '{}'", self.name));
         Ok(database)
