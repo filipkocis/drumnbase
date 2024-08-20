@@ -165,7 +165,7 @@ impl Database {
         }
 
         // get the parsed where chain, Values, and their respective column indexes
-        let where_chain = update.conditions.get_parsed_value_chain(&table.columns)?;
+        let where_chain = update.condition_chain.get_parsed_value_chain(&table.columns)?;
         let parsed_key_vals = update.get_parsed_key_vals(&table.columns)?;
         let column_indexes = parsed_key_vals.iter().map(|(i, _)| *i).collect();
 
@@ -192,7 +192,7 @@ impl Database {
         }
 
         let table = self.get_table_mut(table).ok_or(format!("Table '{}' not found", table))?;
-        let where_chain = delete.conditions.get_parsed_value_chain(&table.columns)?;
+        let where_chain = delete.condition_chain.get_parsed_value_chain(&table.columns)?;
 
         let mut deleted_rows_count = 0;
 

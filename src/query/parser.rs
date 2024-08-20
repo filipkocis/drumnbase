@@ -1,7 +1,10 @@
 use crate::query::query::{Order, UpdateQuery};
 
 use super::query::{Query, QueryType, SelectExtra, SelectQuery, InsertQuery, KeyVal, DeleteQuery};
-use super::condition::{ConditionChain, ConditionOperator, ConditionChainValue, Condition};
+use super::condition::{
+    ConditionOperator,
+    chain::{ConditionChain, ChainElement, Condition}
+};
 
 pub trait QueryParser {
     fn parse(&mut self) -> Result<Query, String>;
@@ -110,7 +113,7 @@ impl QueryParser for SimpleQueryParser {
 impl SimpleQueryParser {
     fn parse_delete(&mut self) -> Result<QueryType, String> {
         self.expect_next("delete")?;
-        let conditions = self.parse_where()?.unwrap_chain()?;
+        let condition_chain = self.parse_where()?.unwrap_chain()?;
 
         let limit = match self.peek() {
             Some(v) if v == "limit" => { 
@@ -121,7 +124,7 @@ impl SimpleQueryParser {
             None => None
         };
 
-        Ok(QueryType::Delete(DeleteQuery { conditions, limit }))
+        Ok(QueryType::Delete(DeleteQuery { condition_chain, limit }))
     }
 
 }
@@ -131,11 +134,11 @@ impl SimpleQueryParser {
     fn parse_update(&mut self) -> Result<QueryType, String> {
         self.expect_next("update")?;
         let key_vals = self.parse_key_vals()?;
-        let conditions = self.parse_where()?.unwrap_chain()?;
+        let condition_chain = self.parse_where()?.unwrap_chain()?;
 
         if let Some(v) = self.peek() { return Err(format!("Unexpected token in update query '{}'", v)) }
 
-        Ok(QueryType::Update(UpdateQuery { key_vals, conditions }))
+        Ok(QueryType::Update(UpdateQuery { key_vals, condition_chain }))
     }
 }
 
@@ -240,32 +243,32 @@ impl SimpleQueryParser {
 
     fn parse_where(&mut self) -> Result<SelectExtra, String> {
         self.expect_next("where")?; 
-        let mut conditions = Vec::new();
+        let mut elements = Vec::new();
 
         loop {
             if let None = self.peek() { break; }
 
-            if let Ok(v) = self.expect_any_peek(&ConditionChainValue::list()) {
-                let chain = ConditionChainValue::from_str(v)?;
-                if chain != ConditionChainValue::Not && conditions.len() == 0 {
+            if let Ok(v) = self.expect_any_peek(&ChainElement::list()) {
+                let chain_operator = ChainElement::from_str(v)?;
+                if chain_operator != ChainElement::Not && elements.len() == 0 {
                     return Err(format!("Condition chain operator '{}' cannot be used at the beggining", v)) 
                 }
                 self.next();
-                conditions.push(chain);
-            } else { if conditions.len() != 0 { break; } }
+                elements.push(chain_operator);
+            } else { if elements.len() != 0 { break; } }
              
             let column = self.next().unwrap().to_string();
             let operator = self.expect_any_next(&ConditionOperator::list())?;
             let operator = ConditionOperator::from_str(operator)?;
             let value = self.next().ok_or("Condition value expected")?.to_string();
            
-            let condition = ConditionChainValue::Condition(Condition { column, operator, value });
-            conditions.push(condition);
+            let condition = ChainElement::Condition(Condition { column, operator, value });
+            elements.push(condition);
         } 
 
-        if conditions.len() == 0 { return Err("At least one condition expected after 'where'".to_string()) }
+        if elements.len() == 0 { return Err("At least one condition expected after 'where'".to_string()) }
 
-        let chain = ConditionChain { conditions };
+        let chain = ConditionChain::new(elements);
         Ok(SelectExtra::Where(chain))
     }
 

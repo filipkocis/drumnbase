@@ -1,7 +1,6 @@
 use crate::{basics::{row::{Row, Value}, column::Column}};
 
-use super::condition::ConditionChain;
-
+use super::condition::chain::ConditionChain;
 
 pub struct QueryResult {
     pub amount: usize,
@@ -151,12 +150,12 @@ impl InsertQuery {
 #[derive(Debug)]
 pub struct UpdateQuery {
     pub key_vals: Vec<KeyVal>,
-    pub conditions: ConditionChain,
+    pub condition_chain: ConditionChain,
 }
 
 impl UpdateQuery {
     pub fn is_valid(&self) -> bool {
-        !self.key_vals.is_empty() && !self.conditions.conditions.is_empty()
+        !self.key_vals.is_empty() && !self.condition_chain.is_empty()
     }
 
     pub fn get_keys(&self) -> Vec<String> {
@@ -184,13 +183,13 @@ impl UpdateQuery {
 
 #[derive(Debug)]
 pub struct DeleteQuery {
-    pub conditions: ConditionChain,
+    pub condition_chain: ConditionChain,
     pub limit: Option<usize>,
 }
 
 impl DeleteQuery {
     pub fn is_valid(&self) -> bool {
-        !self.conditions.conditions.is_empty()
+        !self.condition_chain.is_empty()
     }
 }
 
