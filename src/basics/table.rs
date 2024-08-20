@@ -1,6 +1,6 @@
 use std::{path::PathBuf, collections::HashMap};
 
-use crate::{basics::column::Column, file::data::Data, utils::log, query::query::KeyVal};
+use crate::{basics::column::Column, file::data::Data, utils::log, query::KeyVal};
 
 use super::row::Row;
 

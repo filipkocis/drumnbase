@@ -1,6 +1,4 @@
-use crate::query::query::{Order, UpdateQuery};
-
-use super::query::{Query, QueryType, SelectExtra, SelectQuery, InsertQuery, KeyVal, DeleteQuery};
+use super::{Order, UpdateQuery, Query, QueryType, SelectExtra, SelectQuery, InsertQuery, KeyVal, DeleteQuery};
 use super::condition::{
     ConditionOperator,
     chain::{ConditionChain, ChainElement, Condition}

@@ -1,6 +1,9 @@
-use crate::{database::database::Database, query::query::QueryType, file::{data::LoadMode}, basics::row::{Row}};
+use crate::{database::database::Database, file::{data::LoadMode}, basics::row::{Row}};
 
-use super::{parser::{SimpleQueryParser, QueryParser}, query::{Query, QueryResult, InsertQuery, UpdateQuery, DeleteQuery, SelectQuery}};
+use super::{
+    parser::{SimpleQueryParser, QueryParser}, 
+    Query, QueryType, QueryResult, InsertQuery, UpdateQuery, DeleteQuery, SelectQuery
+};
 
 pub trait QueryRunner {
     fn run_query(&mut self, query: &str) -> Result<QueryResult, String>;
