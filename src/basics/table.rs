@@ -85,7 +85,7 @@ impl Table {
     pub fn print_columns(&self) {
         for column in &self.columns {
             print!("COLUMN '{}' TYPE '{:?}' ", column.name, column.data_type);
-            if !column.default.is_some() { print!("DEFAULT='{}' ", column.default.as_ref().unwrap()); }
+            if column.default.is_some() { print!("DEFAULT='{}' ", column.default.as_ref().unwrap()); }
             if column.not_null { print!("NOTNULL "); }
             if column.unique { print!("UNIQUE "); }
             if column.read_only { print!("READONLY "); }
