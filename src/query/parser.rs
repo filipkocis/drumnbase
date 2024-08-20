@@ -59,14 +59,6 @@ impl SimpleQueryParser {
         }
     }
 
-    fn expect_peek(&mut self, expected: &str) -> Result<(), String> {
-        match self.peek() {
-            Some(part) if part == expected => Ok(()),
-            Some(part) => Err(format!("Expected '{}', found '{}'", expected, part)),
-            None => Err(format!("Expected '{}', found end of query", expected))
-        }
-    }
-
     fn expect_any_next(&mut self, expected: &[&str]) -> Result<&str, String> {
         match self.next() {
             Some(part) if expected.contains(&part) => Ok(part),

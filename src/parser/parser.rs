@@ -113,11 +113,13 @@ impl SimpleParser {
         Ok(column)
     }
 
+    #[allow(unused_variables)]
     fn handle_table_row_get(table: &mut Table, args_parts: &[&str]) -> Result<(), String> {
 
         todo!()
     }
 
+    #[allow(unused_variables)]
     fn handle_table_row_delete(table: &mut Table, args_parts: &[&str]) -> Result<(), String> {
         
         todo!()

@@ -56,6 +56,7 @@ impl Table {
         Ok(())
     }
 
+    #[allow(unused_variables)]
     /// Syncs the row at the given index with the disk
     pub fn sync_row(&mut self, index: usize) {
         todo!()

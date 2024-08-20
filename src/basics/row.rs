@@ -111,6 +111,7 @@ impl Value {
         }
     }
 
+    #[allow(unused_variables)]
     pub fn between(&self, value: &Value) -> bool {
         match (self, value) {
             (Value::Numeric(n), Value::Array(a)) => {
