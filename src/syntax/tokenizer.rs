@@ -49,6 +49,11 @@ impl Tokenizer {
         self.position += 1;
     }
 
+    /// Update token start position
+    fn mark_start(&mut self) {
+        self.token_start = self.position;
+    }
+
     /// Check if end of file is reached
     fn eof(&self) -> bool {
         self.position >= self.input.len()
@@ -95,6 +100,7 @@ impl Tokenizer {
     fn symbol_or_operator(&mut self) -> Result<Token, String> {
         let current = self.current().expect("unexpected end of file, expected symbol or operator");
 
+        self.mark_start();
         let symbol = match current {
             ',' => Some(Symbol::Comma),
             ':' => Some(Symbol::Colon),
@@ -134,6 +140,7 @@ impl Tokenizer {
             op
         };
 
+        self.mark_start();
         let operator = match current {
             '%' => Some(Operator::Modulus), 
             '~' => Some(Operator::BitwiseNot), 
@@ -197,6 +204,7 @@ impl Tokenizer {
         let quote = self.current().unwrap();
         self.advance();
 
+        self.mark_start();
         while let Some(current) = self.current() {
             match current {
                 c if c == quote && !escaped => {
@@ -261,6 +269,7 @@ impl Tokenizer {
             Err(self.error("unexpected digit", "identifier or keyword"))?
         }
 
+        self.mark_start();
         while let Some(current) = self.current() {
             match current {
                 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => value.push(current),
@@ -304,6 +313,7 @@ impl Tokenizer {
         let mut is_float = false;
         let mut prev_underscore = false;
         
+        self.mark_start();
         while let Some(current) = self.current() {
             match current {
                 'a'..='z' | 'A'..='Z' => {
@@ -331,7 +341,7 @@ impl Tokenizer {
             self.advance();
         }
 
-        if prev_underscore { Err(self.error("unexpected underscore", "number"))? } 
+        if prev_underscore { Err(self.error("underscore needs to preced a number", "number"))? } 
         if value.len() == 0 { Err(self.error("unexpected character", "number"))? }
 
         let literal = if is_float {
