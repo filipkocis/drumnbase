@@ -15,6 +15,10 @@ impl Tokenizer {
         }
     }
 
+    pub fn error(&self, message: &str, expected: &str) -> String {
+        format!("{} at position {:?}, expected {:?}, got {:?}", message, self.position, expected, self.current())
+    }
+
     /// Tokenize input and return a list of tokens or an error
     pub fn tokenize(&mut self) -> Result<Vec<Token>, String> {
         let mut tokens = Vec::new();
@@ -104,7 +108,7 @@ impl Tokenizer {
                     1 => Some(Symbol::Period),
                     2 => Some(Symbol::DoublePeriod),
                     3 => Some(Symbol::Ellipsis),
-                    _ => return Err(format!("unexpected character {:?} at position {:?}", self.current(), self.position))
+                    _ => Err(self.error("unexpected character", "max 3 periods"))?
                 }
             }
             '?' => Some(Symbol::QuestionMark),
@@ -181,7 +185,7 @@ impl Tokenizer {
             })
         }
 
-        Err(format!("unexpected character {:?} at position {:?}", self.current(), self.position))
+        Err(self.error("unexpected character", "symbol or operator"))
     }
 
     /// Parse string token
@@ -191,7 +195,7 @@ impl Tokenizer {
         let mut closed = false;
         
         if !matches!(self.current(), Some('"') | Some('\'')) {
-            return Err(format!("unexpected character {:?} at position {:?}", self.current().unwrap(), self.position))
+            Err(self.error("unexpected character", "quotes"))?
         }
         let quote = self.current().unwrap();
         self.advance();
@@ -225,7 +229,7 @@ impl Tokenizer {
         }
 
         if !closed {
-            return Err(format!("unexpected end of file at position {:?}", self.position))
+            Err(self.error("unexpected end of file", "closing quotes"))?
         }
 
         Ok(Token {
@@ -239,7 +243,7 @@ impl Tokenizer {
     fn escape_current(&mut self) -> Result<char, String> {
         let current = match self.current() {
             Some(c) => c,
-            None => return Err(format!("unexpected end of file at position {:?}", self.position))
+            None => Err(self.error("unexpected end of file", "escaped character"))?
         };
 
         let escaped = match current {
@@ -249,7 +253,7 @@ impl Tokenizer {
             '\\' => '\\',
             '"' => '"',
             '\'' => '\'',
-            _ => return Err(format!("unexpected escape sequence {:?} at positoin {:?}", current, self.position))
+            _ => Err(self.error("Invalid escape sequence", "escaped character"))?
         };
 
         Ok(escaped)
@@ -260,7 +264,7 @@ impl Tokenizer {
         let mut value = String::new();
 
         if self.match_next('0'..='9') {
-            return Err(format!("unexpected digit at position {:?}", self.position))
+            Err(self.error("unexpected digit", "identifier or keyword"))?
         }
 
         while let Some(current) = self.current() {
@@ -273,7 +277,7 @@ impl Tokenizer {
         }
 
         if value.len() == 0 {
-            return Err(format!("unexpected character {:?} at position {}", self.current(), self.position))
+            Err(self.error("unexpected character", "identifier or keyword"))?
         }
 
         let keyword = match value.as_str() {
@@ -312,7 +316,7 @@ impl Tokenizer {
         while let Some(current) = self.current() {
             match current {
                 'a'..='z' | 'A'..='Z' => {
-                    return Err(format!("unexpected character {:?} at position {}", current, self.position))
+                    Err(self.error("unexpected character", "number"))?
                 },
                 '0'..='9' => {
                     prev_underscore = false;
@@ -336,12 +340,8 @@ impl Tokenizer {
             self.advance();
         }
 
-        if prev_underscore {
-            return Err(format!("unexpected underscore at position {:?}", self.position))
-        } 
-        if value.len() == 0 {
-            return Err(format!("unexpected character {:?} at position {}", self.current(), self.position))
-        }
+        if prev_underscore { Err(self.error("unexpected underscore", "number"))? } 
+        if value.len() == 0 { Err(self.error("unexpected character", "number"))? }
 
         let literal = if is_float {
             Literal::Float(value)
