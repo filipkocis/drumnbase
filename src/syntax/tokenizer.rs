@@ -135,7 +135,27 @@ impl Tokenizer {
         })
     }
 
-    
+    /// Parse escape sequence, without the leading backslash
+    /// Does not advance the position
+    fn escape_current(&mut self) -> Result<char, String> {
+        let current = match self.current() {
+            Some(c) => c,
+            None => return Err(format!("unexpected end of file at position {:?}", self.position))
+        };
+
+        let escaped = match current {
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            '\\' => '\\',
+            '"' => '"',
+            '\'' => '\'',
+            _ => return Err(format!("unexpected escape sequence {:?} at positoin {:?}", current, self.position))
+        };
+
+        Ok(escaped)
+    }
+
     /// Parse identifier or keyword token
     fn identifier_or_keyword(&mut self) -> Result<Token, String> {
         let mut value = String::new();
