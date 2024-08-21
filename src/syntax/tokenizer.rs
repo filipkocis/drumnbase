@@ -85,7 +85,55 @@ impl Tokenizer {
     }
 
     
+    /// Parse string token
+    fn string(&mut self) -> Result<Token, String> {
+        let mut value = String::new();
+        let mut escaped = false;
+        let mut closed = false;
+        
+        if !matches!(self.current(), Some('"') | Some('\'')) {
+            return Err(format!("unexpected character {:?} at position {:?}", self.current().unwrap(), self.position))
+        }
+        let quote = self.current().unwrap();
+        self.advance();
 
+        while let Some(current) = self.current() {
+            match current {
+                c if c == quote && !escaped => {
+                    closed = true;
+                    self.advance();
+                    break;
+                },
+                c if c == '\\' && !escaped => {
+                    escaped = true;
+                },
+                '"' | '\'' => {
+                    value.push(current);
+                    escaped = false;
+                },
+                _ if escaped => {
+                    let esc = self.escape_current()?;
+                    value.push(esc);
+                    escaped = false;
+                },
+                _ => {
+                    value.push(current);
+                    escaped = false;
+                }
+            }
+
+            self.advance();
+        }
+
+        if !closed {
+            return Err(format!("unexpected end of file at position {:?}", self.position))
+        }
+
+        Ok(Token {
+            kind: TokenKind::Literal(Literal::String(value)),
+            position: self.position,
+        })
+    }
 
     
     /// Parse identifier or keyword token
