@@ -84,7 +84,106 @@ impl Tokenizer {
         Ok(token)
     }
 
-    
+    /// Parse symbol or operator token
+    fn symbol_or_operator(&mut self) -> Result<Token, String> {
+        let current = self.current().expect("unexpected end of file, expected symbol or operator");
+
+        let symbol = match current {
+            ',' => Some(Symbol::Comma),
+            ':' => Some(Symbol::Colon),
+            ';' => Some(Symbol::Semicolon),
+            '.' => {
+                let mut count = 1;
+
+                while self.is_next('.') {
+                    count += 1;
+                    self.advance();
+                }
+
+                match count {
+                    1 => Some(Symbol::Period),
+                    2 => Some(Symbol::DoublePeriod),
+                    3 => Some(Symbol::Ellipsis),
+                    _ => return Err(format!("unexpected character {:?} at position {:?}", self.current(), self.position))
+                }
+            }
+            '?' => Some(Symbol::QuestionMark),
+            '(' => Some(Symbol::LeftParenthesis),
+            ')' => Some(Symbol::RightParenthesis),
+            '{' => Some(Symbol::LeftBracket),
+            '}' => Some(Symbol::RightBracket),
+            '[' => Some(Symbol::LeftBrace),
+            ']' => Some(Symbol::RightBrace),
+            _ => None,
+        };
+
+        if let Some(symbol) = symbol {
+            self.advance();
+            return Ok(Token {
+                kind: TokenKind::Symbol(symbol),
+                position: self.position, 
+            })
+        }
+
+        let adv_ret = |s: &mut Tokenizer, op| {
+            s.advance();
+            op
+        };
+
+        let operator = match current {
+            '%' => Some(Operator::Modulus), 
+            '~' => Some(Operator::BitwiseNot), 
+            '^' => Some(Operator::BitwiseXor), 
+
+            c => match (c, self.next()) {
+                ('&', Some('&')) => adv_ret(self, Some(Operator::And)),
+                ('&', _) => Some(Operator::BitwiseAnd),
+                ('|', Some('|')) => adv_ret(self, Some(Operator::Or)),
+                ('|', _) => Some(Operator::BitwiseOr),
+
+                ('<', Some('<')) => adv_ret(self, Some(Operator::BitwiseLeftShift)),
+                ('<', Some('=')) => adv_ret(self, Some(Operator::LessThanOrEqual)),
+                ('<', _) => Some(Operator::LessThan),
+
+                ('>', Some('>')) => adv_ret(self, Some(Operator::BitwiseRightShift)),
+                ('>', Some('=')) => adv_ret(self, Some(Operator::GreaterThanOrEqual)),
+                ('>', _) => Some(Operator::GreaterThan),
+
+                ('!', Some('=')) => adv_ret(self, Some(Operator::NotEqual)),
+                ('!', _) => Some(Operator::Not),
+
+                ('=', Some('=')) => adv_ret(self, Some(Operator::Equal)),
+                ('=', _) => Some(Operator::Assign),
+
+                ('+', Some('+')) => adv_ret(self, Some(Operator::Increment)),
+                ('+', Some('=')) => adv_ret(self, Some(Operator::AddAssign)),
+                ('+', _) => Some(Operator::Add),
+
+                ('-', Some('-')) => adv_ret(self, Some(Operator::Decrement)),
+                ('-', Some('=')) => adv_ret(self, Some(Operator::SubtractAssign)),
+                ('-', _) => Some(Operator::Subtract),
+
+                ('*', Some('=')) => adv_ret(self, Some(Operator::MultiplyAssign)),
+                ('*', _) => Some(Operator::Multiply),
+
+                ('/', Some('=')) => adv_ret(self, Some(Operator::DivideAssign)),
+                ('/', _) => Some(Operator::Divide),
+
+                _ => None,
+            }
+        };
+
+        if let Some(operator) = operator {
+            self.advance();
+            return Ok(Token {
+                kind: TokenKind::Operator(operator),
+                position: self.position,
+            })
+        }
+
+        Err(format!("unexpected character {:?} at position {:?}", self.current(), self.position))
+    }
+
     /// Parse string token
     fn string(&mut self) -> Result<Token, String> {
         let mut value = String::new();
