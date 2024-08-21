@@ -5,6 +5,7 @@ use super::token::{Token, TokenKind, Symbol, Operator, Literal, Keyword};
 pub struct Tokenizer {
     input: String,
     position: usize,
+    token_start: usize,
 }
 
 impl Tokenizer {
@@ -12,6 +13,7 @@ impl Tokenizer {
         Tokenizer {
             input,
             position: 0,
+            token_start: 0,
         }
     }
 
@@ -64,28 +66,29 @@ impl Tokenizer {
         next.is_some() && next.unwrap() == expected
     }
 
+    /// Returns new token struct wrapped in Ok
+    /// utility function to avoid writing `Ok(Token::new(...))`
+    fn ok_token(&self, kind: TokenKind) -> Result<Token, String> {
+        Ok(Token::new(kind, self.token_start, self.position))
+    }
+
     /// Parse the next token
     fn token(&mut self) -> Result<Token, String> {
         if self.eof() {
-            return Ok(Token {
-                kind: TokenKind::EOF,
-                position: self.position,
-            })
+            return self.ok_token(TokenKind::EOF)
         }
 
         let current = self.current().unwrap();
-        let token = match current {
+        match current {
             ' ' | '\t' | '\n' => {
                 self.advance();
                 return self.token();
             },
-            '0'..='9' => self.number()?,
-            'a'..='z' | 'A'..='Z' | '_' => self.identifier_or_keyword()?,
-            '"' | '\'' => self.string()?,
-            _ => self.symbol_or_operator()?,
-        };
-
-        Ok(token)
+            '0'..='9' => self.number(),
+            'a'..='z' | 'A'..='Z' | '_' => self.identifier_or_keyword(),
+            '"' | '\'' => self.string(),
+            _ => self.symbol_or_operator(),
+        }
     }
 
     /// Parse symbol or operator token
@@ -123,10 +126,7 @@ impl Tokenizer {
 
         if let Some(symbol) = symbol {
             self.advance();
-            return Ok(Token {
-                kind: TokenKind::Symbol(symbol),
-                position: self.position, 
-            })
+            return self.ok_token(TokenKind::Symbol(symbol));
         }
 
         let adv_ret = |s: &mut Tokenizer, op| {
@@ -179,10 +179,7 @@ impl Tokenizer {
 
         if let Some(operator) = operator {
             self.advance();
-            return Ok(Token {
-                kind: TokenKind::Operator(operator),
-                position: self.position,
-            })
+            return self.ok_token(TokenKind::Operator(operator))
         }
 
         Err(self.error("unexpected character", "symbol or operator"))
@@ -232,10 +229,7 @@ impl Tokenizer {
             Err(self.error("unexpected end of file", "closing quotes"))?
         }
 
-        Ok(Token {
-            kind: TokenKind::Literal(Literal::String(value)),
-            position: self.position,
-        })
+        self.ok_token(TokenKind::Literal(Literal::String(value)))
     }
 
     /// Parse escape sequence, without the leading backslash
@@ -301,10 +295,7 @@ impl Tokenizer {
             None => TokenKind::Identifier(value),
         };
         
-        Ok(Token {
-            kind,
-            position: self.position,
-        }) 
+        self.ok_token(kind)
     }
 
     /// Parse number token
@@ -349,9 +340,6 @@ impl Tokenizer {
             Literal::Int(value)
         };
 
-        Ok(Token {
-            kind: TokenKind::Literal(literal),
-            position: self.position, 
-        })
+        self.ok_token(TokenKind::Literal(literal))
     }
 }
