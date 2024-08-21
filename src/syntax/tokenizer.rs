@@ -83,4 +83,61 @@ impl Tokenizer {
 
         Ok(token)
     }
+
+    
+
+
+    
+   
+    /// Parse number token
+    fn number(&mut self) -> Result<Token, String> {
+        let mut value = String::new();
+        let mut is_float = false;
+        let mut prev_underscore = false;
+        
+        while let Some(current) = self.current() {
+            match current {
+                'a'..='z' | 'A'..='Z' => {
+                    return Err(format!("unexpected character {:?} at position {}", current, self.position))
+                },
+                '0'..='9' => {
+                    prev_underscore = false;
+                    value.push(current)
+                },
+                c if c == '.' 
+                    && !is_float // only one dot per number 
+                    && !prev_underscore  // cannot be preceded by an underscore
+                    && value.len() != 0  // cannot be at the beginning
+                    && self.match_next('0'..='9') => // must be followed by a digit
+                {
+                    is_float = true;
+                    value.push(current);
+                },
+                c if c == '_'  && value.len() != 0 => {
+                    prev_underscore = true;
+                }
+                _ => break,
+            }
+
+            self.advance();
+        }
+
+        if prev_underscore {
+            return Err(format!("unexpected underscore at position {:?}", self.position))
+        } 
+        if value.len() == 0 {
+            return Err(format!("unexpected character {:?} at position {}", self.current(), self.position))
+        }
+
+        let literal = if is_float {
+            Literal::Float(value)
+        } else {
+            Literal::Int(value)
+        };
+
+        Ok(Token {
+            kind: TokenKind::Literal(literal),
+            position: self.position, 
+        })
+    }
 }
