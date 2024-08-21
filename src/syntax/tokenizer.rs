@@ -88,7 +88,54 @@ impl Tokenizer {
 
 
     
-   
+    /// Parse identifier or keyword token
+    fn identifier_or_keyword(&mut self) -> Result<Token, String> {
+        let mut value = String::new();
+
+        if self.match_next('0'..='9') {
+            return Err(format!("unexpected digit at position {:?}", self.position))
+        }
+
+        while let Some(current) = self.current() {
+            match current {
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => value.push(current),
+                _ => break,
+            }
+
+            self.advance();
+        }
+
+        if value.len() == 0 {
+            return Err(format!("unexpected character {:?} at position {}", self.current(), self.position))
+        }
+
+        let keyword = match value.as_str() {
+            "if" => Some(Keyword::If),
+            "else" => Some(Keyword::Else),
+            "while" => Some(Keyword::While),
+            "function" | "fn" => Some(Keyword::Function),
+            "return" => Some(Keyword::Return),
+            "break" => Some(Keyword::Break),
+            "continue" => Some(Keyword::Continue),
+            "let" => Some(Keyword::Let),
+            "const" => Some(Keyword::Const),
+            "true" => Some(Keyword::True),
+            "false" => Some(Keyword::False),
+            "null" => Some(Keyword::Null),
+            _ => None,
+        };
+
+        let kind = match keyword {
+            Some(keyword) => TokenKind::Keyword(keyword),
+            None => TokenKind::Identifier(value),
+        };
+        
+        Ok(Token {
+            kind,
+            position: self.position,
+        }) 
+    }
+
     /// Parse number token
     fn number(&mut self) -> Result<Token, String> {
         let mut value = String::new();
