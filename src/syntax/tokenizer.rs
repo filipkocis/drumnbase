@@ -237,7 +237,11 @@ impl Tokenizer {
             Err(self.error("unexpected end of file", "closing quotes"))?
         }
 
-        self.ok_token(TokenKind::Literal(Literal::String(value)))
+        Ok(Token::new(
+                TokenKind::Literal(Literal::String(value)),
+                self.token_start,
+                self.position - 1 // exclude closing quote
+        ))
     }
 
     /// Parse escape sequence, without the leading backslash
