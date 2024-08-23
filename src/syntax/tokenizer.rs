@@ -123,10 +123,10 @@ impl Tokenizer {
             '?' => Some(Symbol::QuestionMark),
             '(' => Some(Symbol::LeftParenthesis),
             ')' => Some(Symbol::RightParenthesis),
-            '{' => Some(Symbol::LeftBracket),
-            '}' => Some(Symbol::RightBracket),
-            '[' => Some(Symbol::LeftBrace),
-            ']' => Some(Symbol::RightBrace),
+            '{' => Some(Symbol::LeftBrace),
+            '}' => Some(Symbol::RightBrace),
+            '[' => Some(Symbol::LeftBracket),
+            ']' => Some(Symbol::RightBracket),
             _ => None,
         };
 
