@@ -79,4 +79,28 @@ impl Parser {
             _ => self.expression(),
         }
     }
+
+    fn keyword(&mut self) -> Result<Node, String> {
+        let token = self.current_token()?;
+
+        if let TokenKind::Keyword(ref keyword) = token.kind {
+            match keyword {
+                Keyword::If => self.if_statement(),
+                // Keyword::Else => self.else_statement(),
+                // Keyword::While => self.while_statement(),
+                // Keyword::For => self.for_statement(),
+                // Keyword::Function => self.function_declaration_statement(),
+                // Keyword::Return => self.return_statement(),
+                Keyword::Break => Ok(Node::Statement(Statement::Break)),
+                Keyword::Continue => Ok(Node::Statement(Statement::Continue)),
+                // Keyword::Let => self.let_statement(),
+                // Keyword::Const => self.const_statement(),
+                Keyword::True | Keyword::False => Ok(Node::Literal(ast::Literal::Boolean(keyword == &Keyword::True))),
+                Keyword::Null => Ok(Node::Literal(ast::Literal::Null)),
+                _ => todo!("keyword")
+            }
+        } else {
+            Err("Expected keyword".to_string())
+        }
+    }
 }
