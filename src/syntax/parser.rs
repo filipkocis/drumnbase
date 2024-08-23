@@ -103,4 +103,15 @@ impl Parser {
             Err("Expected keyword".to_string())
         }
     }
+
+    fn expression(&mut self) -> Result<Node, String> {
+        let token = self.current_token()?;
+
+        match token.kind {
+            TokenKind::EOF => Err("Unexpected EOF".to_string()),
+            TokenKind::Literal(_) => self.literal(),
+            TokenKind::Symbol(_) => self.symbol(), 
+            _ => todo!("expression")
+        }
+    }
 }
