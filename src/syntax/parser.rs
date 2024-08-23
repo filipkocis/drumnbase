@@ -14,6 +14,21 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
+    pub fn parse(&mut self) -> Result<Node, String> {
+        let mut statements = vec![];
+
+        while let Some(token) = self.current() {
+            if token.kind == TokenKind::EOF {
+                break;
+            } else {
+                statements.push(self.statement()?)
+            }
+            self.advance();
+        }
+
+        Ok(Node::Block(statements))
+    }
+
     /// Expects the current token to be of the specified kind, consumes and returns it.
     fn expect(&mut self, kind: TokenKind) -> Result<&Token, String> {
         self.advance();
@@ -52,5 +67,16 @@ impl Parser {
 
     fn advance(&mut self) {
         self.current += 1;
+    }
+
+
+    fn statement(&mut self) -> Result<Node, String> {
+        let token = self.current_token()?;
+
+        match token.kind {
+            TokenKind::EOF => Err("Unexpected EOF".to_string()),
+            TokenKind::Keyword(_) => self.keyword(),
+            _ => self.expression(),
+        }
     }
 }
