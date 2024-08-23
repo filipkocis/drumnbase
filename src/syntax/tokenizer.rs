@@ -6,6 +6,7 @@ pub struct Tokenizer {
     input: String,
     position: usize,
     token_start: usize,
+    line: usize,
 }
 
 impl Tokenizer {
@@ -14,6 +15,7 @@ impl Tokenizer {
             input,
             position: 0,
             token_start: 0,
+            line: 0,
         }
     }
 
@@ -46,6 +48,9 @@ impl Tokenizer {
  
     /// Advance position
     fn advance(&mut self) {
+        if let Some('\n') = self.current() {
+            self.line += 1;
+        }
         self.position += 1;
     }
 
@@ -74,7 +79,7 @@ impl Tokenizer {
     /// Returns new token struct wrapped in Ok
     /// utility function to avoid writing `Ok(Token::new(...))`
     fn ok_token(&self, kind: TokenKind) -> Result<Token, String> {
-        Ok(Token::new(kind, self.token_start, self.position))
+        Ok(Token::new(kind, self.token_start, self.position, self.line))
     }
 
     /// Parse the next token
@@ -240,7 +245,8 @@ impl Tokenizer {
         Ok(Token::new(
                 TokenKind::Literal(Literal::String(value)),
                 self.token_start,
-                self.position - 1 // exclude closing quote
+                self.position - 1, // exclude closing quote
+                self.line,
         ))
     }
 

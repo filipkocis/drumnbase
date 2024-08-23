@@ -39,7 +39,7 @@ impl ParserError {
 
     pub fn highlight(&self, input: &str) {
         for error in &self.errors {
-            println!("Error: {}", error.message);
+            println!("Error on line {}: {}", error.token.line + 1, error.message);
             println!("{}", self.highlight_token(input, &error.token));
         }
     }
@@ -49,7 +49,37 @@ impl ParserError {
         let start = token.index.start;
         let end = token.index.end;
 
-        for (i, c) in input.chars().enumerate() {
+        let mut offset = 0;
+        let mut line_start = 0; 
+
+        let lines = input
+            .split('\n')
+            .collect::<Vec<_>>()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, line)| {
+                match i {
+                    _ if i < token.line - 3 => {
+                        line_start += 1;
+                        offset += line.len() + 1;
+                        None
+                    },
+                    _ if i > token.line + 3 => None,
+                    _ => Some(line.to_string())
+                } 
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let mut current_line = 0;
+        for (idx, c) in lines.chars().enumerate() {
+            if lines.chars().nth(idx - 1) == Some('\n') || idx == 0 {
+                current_line += 1;
+                result.push_str(format!("{: >4} | ", line_start + current_line).as_str())
+            }
+
+            let i = idx + offset;
+
             if i == start { result.push_str("\u{1b}[30;43m") } 
             if i == start && i == end { result.push_str(" ") } // EOF
             if i == end { result.push_str("\u{1b}[0m") } 
@@ -111,7 +141,6 @@ impl Parser {
     fn expected(&mut self, expected: impl Debug) -> ASTError {
         let current = self.current().cloned();
         self.advance();
-        let end = self.tokens.last().expect("Empty token list").index.end;
 
         if let Some(token) = current {
             ASTError::new(
@@ -119,9 +148,12 @@ impl Parser {
                 token
             )
         } else {
+            let end = self.tokens.last().expect("Empty token list").index.end;
+            let line = self.tokens.last().unwrap().line;
+
             ASTError::new(
                 format!("Expected {:?} but found None", expected),
-                Token::new(TokenKind::EOF, end, end)
+                Token::new(TokenKind::EOF, end, end, line)
             )
         }
     }
