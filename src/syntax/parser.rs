@@ -104,20 +104,25 @@ impl Parser {
         let mut previous_current;
 
         while let Some(token) = self.current() {
-            if token.kind == TokenKind::EOF {
-                break;
-            } else {
-                previous_current = self.current;
-                match self.statement() {
-                    Ok(statement) => statements.push(statement),
-                    Err(error) => {
-                        if previous_current == self.current {
-                            // Prevent infinite loop
-                            self.advance();
-                        }
-                        errors.push(error);
+            if token.kind == TokenKind::EOF { break; }
+
+            previous_current = self.current;
+            match self.statement() {
+                Ok(statement) => statements.push(statement),
+                Err(error) => {
+                    if previous_current == self.current {
+                        // Prevent infinite loop
+                        self.advance();
                     }
+                    errors.push(error);
                 }
+            }
+
+            match self.current() {
+                Some(token) if token.kind == TokenKind::Symbol(Symbol::Semicolon) => self.advance(),
+                Some(token) if token.kind == TokenKind::EOF => break,
+                Some(_) => errors.push(self.missing(TokenKind::Symbol(Symbol::Semicolon))),
+                _ => break
             }
         }
 
