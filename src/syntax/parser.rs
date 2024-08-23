@@ -172,4 +172,19 @@ impl Parser {
         self.advance();
         Ok(Node::Literal(literal))
     }
+
+    fn symbol(&mut self) -> Result<Node, String> {
+        let token = self.current_token()?;
+        
+        if let TokenKind::Symbol(ref symbol) = token.kind {
+            match symbol {
+                Symbol::LeftParenthesis => self.group(),
+                Symbol::LeftBrace => self.block(),
+                Symbol::LeftBracket => self.array(),
+                _ => todo!("symbol")
+            }
+        } else {
+            Err(self.expected("symbol"))?
+        }
+    }
 }
