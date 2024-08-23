@@ -59,7 +59,7 @@ impl ParserError {
             .enumerate()
             .filter_map(|(i, line)| {
                 match i {
-                    _ if i < token.line - 3 => {
+                    _ if i < (token.line - 3).min(0) => {
                         line_start += 1;
                         offset += line.len() + 1;
                         None
