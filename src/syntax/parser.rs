@@ -154,14 +154,25 @@ impl Parser {
                 token
             )
         } else {
-            let end = self.tokens.last().expect("Empty token list").index.end;
-            let line = self.tokens.last().unwrap().line;
-
             ASTError::new(
                 format!("Expected {:?} but found None", expected),
-                Token::new(TokenKind::EOF, end, end, line)
+                self.eof_default()
             )
         }
+    }
+
+    fn eof_default(&self) -> Token {
+        let end = self.tokens.last().expect("Empty token list").index.end;
+        let line = self.tokens.last().unwrap().line;
+        Token::new(TokenKind::EOF, end, end, line)
+    }
+
+    fn missing(&self, missing: impl Debug) -> ASTError {
+        let token = self.previous().cloned().unwrap_or(self.eof_default());
+        ASTError::new(
+            format!("Missing {:?}", missing),
+            token
+        )
     }
 
     /// Returns the current token, or an error if there is none.
