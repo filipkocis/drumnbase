@@ -1,7 +1,7 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub kind: TokenKind,
-    index: TokenIndex,
+    pub index: TokenIndex,
 }
 
 impl Token {
@@ -21,13 +21,13 @@ impl Token {
     }
 }
 
-#[derive(Debug, PartialEq)]
-struct TokenIndex {
-    start: usize,
-    end: usize,
+#[derive(Debug, PartialEq, Clone)]
+pub struct TokenIndex {
+    pub start: usize,
+    pub end: usize,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenKind {
     Literal(Literal),
     Identifier(String),
@@ -37,14 +37,14 @@ pub enum TokenKind {
     EOF,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
     Int(String),
     Float(String),
     String(String),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Keyword {
     If,
     Else,
@@ -61,7 +61,7 @@ pub enum Keyword {
     Null,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Symbol {
     Comma,
     Colon,
@@ -79,7 +79,7 @@ pub enum Symbol {
     Asterisk,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Add, 
     Subtract,
