@@ -269,15 +269,26 @@ impl Parser {
         self.expect(TokenKind::Symbol(Symbol::LeftBrace))?;
 
         let mut statements = Vec::new();
+        let mut errors = Vec::new();
 
         while let Some(token) = self.current() {
-            if token.kind == TokenKind::Symbol(Symbol::RightBrace) {
-                break;
-            } else {
-                statements.push(self.statement()?);
+            match token.kind {
+                TokenKind::Symbol(Symbol::RightBrace) => break,
+                _ => statements.push(self.statement()?)
             }
+
+           match self.current() {
+                Some(token) if token.kind == TokenKind::Symbol(Symbol::Semicolon) => self.advance(),
+                Some(token) if token.kind == TokenKind::Symbol(Symbol::RightBrace) => break,
+                Some(token) if token.kind == TokenKind::EOF => break,
+                Some(_) => {
+                    errors.push(self.missing(TokenKind::Symbol(Symbol::Semicolon)))
+                }
+                None => break
+           }  
         }
 
+        // TODO: handle error return
         self.expect(TokenKind::Symbol(Symbol::RightBrace))?;
         Ok(Node::Block(statements))
     }
