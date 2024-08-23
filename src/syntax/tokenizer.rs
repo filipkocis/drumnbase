@@ -275,7 +275,7 @@ impl Tokenizer {
     fn identifier_or_keyword(&mut self) -> Result<Token, String> {
         let mut value = String::new();
 
-        if self.match_next('0'..='9') {
+        if matches!(self.current(), Some('0'..='9')) {
             Err(self.error("unexpected digit", "identifier or keyword"))?
         }
 
