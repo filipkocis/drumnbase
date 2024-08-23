@@ -187,4 +187,31 @@ impl Parser {
             Err(self.expected("symbol"))?
         }
     }
+
+    fn group(&mut self) -> Result<Node, String> {
+        // TODO: implement group
+        self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+        let expression = self.expression()?;
+        self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?;
+        Ok(expression)
+    }
+
+    fn array(&mut self) -> Result<Node, String> {
+        self.expect(TokenKind::Symbol(Symbol::LeftBracket))?;
+        let mut elements = Vec::new();
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Symbol(Symbol::RightBracket) => break,
+                TokenKind::Symbol(Symbol::Comma) => {
+                    self.advance();
+                    continue;
+                },
+                _ => elements.push(self.expression()?)
+            }
+        }
+
+        self.expect(TokenKind::Symbol(Symbol::RightBracket))?;
+        Ok(Node::Literal(ast::Literal::Array(elements)))
+    }
 }
