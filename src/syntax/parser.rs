@@ -104,6 +104,30 @@ impl Parser {
         }
     }
 
+    fn if_statement(&mut self) -> Result<Node, String> {
+        self.expect(TokenKind::Keyword(Keyword::If))?;
+
+        let condition = self.expression()?;
+        let then_block = self.expression()?; 
+
+        let else_block = if let Some(token) = self.current() {
+            if token.kind == TokenKind::Keyword(Keyword::Else){
+                self.advance();
+                Some(self.expression()?)
+            } else {
+                None
+            }
+        } else { 
+            None
+        };
+
+        Ok(Node::Statement(Statement::If {
+            condition: Box::new(condition),
+            then_block: Box::new(then_block),        
+            else_block: else_block.map(Box::new)
+        }))
+    }
+
     fn expression(&mut self) -> Result<Node, String> {
         let token = self.current_token()?;
 
