@@ -128,6 +128,23 @@ impl Parser {
         }))
     }
 
+    fn block(&mut self) -> Result<Node, String> {
+        self.expect(TokenKind::Symbol(Symbol::LeftBrace))?;
+
+        let mut statements = Vec::new();
+
+        while let Some(token) = self.current() {
+            if token.kind == TokenKind::Symbol(Symbol::RightBrace) {
+                break;
+            } else {
+                statements.push(self.statement()?);
+            }
+        }
+
+        self.expect(TokenKind::Symbol(Symbol::RightBrace))?;
+        Ok(Node::Block(statements))
+    }
+
     fn expression(&mut self) -> Result<Node, String> {
         let token = self.current_token()?;
 
