@@ -58,8 +58,9 @@ impl ParserError {
             .iter()
             .enumerate()
             .filter_map(|(i, line)| {
+                let low_bound = if token.line < 3 { 0 } else { token.line - 3 };
                 match i {
-                    _ if i < (token.line - 3).min(0) => {
+                    _ if i < low_bound => {
                         line_start += 1;
                         offset += line.len() + 1;
                         None
