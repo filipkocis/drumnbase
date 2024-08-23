@@ -114,4 +114,21 @@ impl Parser {
             _ => todo!("expression")
         }
     }
+
+    fn literal(&mut self) -> Result<Node, String> {
+        let token = self.current_token()?;
+
+        let literal = if let TokenKind::Literal(ref literal) = token.kind {
+            match literal {
+                Literal::Int(value) => ast::Literal::Number(Number::Int(value.parse().unwrap())),            
+                Literal::Float(value) => ast::Literal::Number(Number::Float(value.parse().unwrap())),            
+                Literal::String(value) => ast::Literal::String(value.clone()),            
+            }
+        } else {
+            Err(self.expected("literal"))?
+        };
+
+        self.advance();
+        Ok(Node::Literal(literal))
+    }
 }
