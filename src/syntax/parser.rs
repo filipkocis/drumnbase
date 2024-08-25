@@ -74,7 +74,7 @@ impl ParserError {
 
         let mut current_line = 0;
         for (idx, c) in lines.chars().enumerate() {
-            if lines.chars().nth(idx - 1) == Some('\n') || idx == 0 {
+            if lines.chars().nth(idx.saturating_sub(1)) == Some('\n') || idx == 0 {
                 current_line += 1;
                 result.push_str(format!("{: >4} | ", line_start + current_line).as_str())
             }
