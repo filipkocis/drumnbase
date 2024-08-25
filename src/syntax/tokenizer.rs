@@ -1,6 +1,6 @@
 use std::ops::RangeBounds;
 
-use super::token::{Token, TokenKind, Symbol, Operator, Literal, Keyword};
+use super::token::{Token, TokenKind, Symbol, Operator, Literal, Keyword, QueryKeyword};
 
 pub struct Tokenizer {
     input: String,
@@ -90,6 +90,10 @@ impl Tokenizer {
 
         let current = self.current().unwrap();
         match current {
+            c if c == '/' && self.is_next('/') => {
+                self.consume_comment();
+                return self.token();
+            }
             ' ' | '\t' | '\n' => {
                 self.advance();
                 return self.token();
@@ -361,5 +365,12 @@ impl Tokenizer {
         };
 
         self.ok_token(TokenKind::Literal(literal))
+    }
+
+    fn consume_comment(&mut self) {
+        while let Some(current) = self.current() {
+            if current == '\n' { break; }
+            self.advance();
+        }
     }
 }
