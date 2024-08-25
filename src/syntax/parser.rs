@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::syntax::token::TokenKind;
 
-use super::{token::{Token, Keyword, Symbol, Literal}, ast::{Node, Statement, Number, self}};
+use super::{token::{Token, Keyword, Symbol, Literal, Operator}, ast::{Node, Statement, Number, self, Expression, Type}};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -159,6 +159,16 @@ impl Parser {
                 self.eof_default()
             )
         }
+    }
+
+    fn expected_node(&mut self, expected: impl Debug, node: impl Debug) -> ASTError {
+        let current = self.current().cloned().unwrap_or(self.eof_default());
+        self.advance();
+
+        ASTError::new(
+            format!("Expected {:?} but found {:?}", expected, node),
+            current
+        )
     }
 
     fn eof_default(&self) -> Token {
