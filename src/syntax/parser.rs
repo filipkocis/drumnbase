@@ -414,13 +414,55 @@ impl Parser {
     fn expression(&mut self) -> Result<Node, ASTError> {
         let token = self.current_token("expression")?;
 
-        match token.kind {
+        // expression can start with unary operator
+        if let TokenKind::Operator(ref operator) = token.kind {
+            if operator.is_unary() {
+                let ast_operator = operator.to_ast_operator();
+                self.advance();
+                let right = self.expression()?;
+                return Ok(Node::Expression(Expression::Unary { operator: ast_operator, right: Box::new(right) }))
+            }
+        }
+
+        // expression can start with a literal, symbol or identifier
+        let node = match token.kind {
             // TokenKind::EOF => Err("Unexpected EOF".to_string()),
-            TokenKind::Literal(_) => self.literal(),
-            TokenKind::Symbol(_) => self.symbol(), 
+            TokenKind::Literal(_) => self.literal()?,
+            TokenKind::Symbol(_) => self.symbol()?, 
+            TokenKind::Identifier(_) => self.identifier()?, 
+            TokenKind::Keyword(ref c) if c.is_literal() => self.keyword_literal()?,
             // _ => todo!("expression")
             _ => Err(self.expected("expression"))?
+        };
+
+        // expression can be followed by increment or decrement operator
+        if let Some(token) = self.current() {
+            if let TokenKind::Operator(ref operator) = token.kind {
+                if operator.is_unary() {
+                    let ast_operator = operator.to_ast_operator();
+                    self.advance();
+                    return Ok(Node::Expression(Expression::Unary { operator: ast_operator, right: Box::new(node) }))
+                }
+            }
         }
+
+        // expression can be followed by an operator
+        if let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Operator(ref operator) => {
+                    if operator.is_assigment() {
+                        return self.assignment(node)
+                    } else if operator.is_binary() {
+                        return self.binary(node)
+                    } else {
+                        Err(self.expected("valid operator"))?
+                    }
+                },
+                _ => { }
+            }
+        }
+
+        Ok(node)
     }
 
     fn literal(&mut self) -> Result<Node, ASTError> {
