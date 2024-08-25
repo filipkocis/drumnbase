@@ -465,6 +465,47 @@ impl Parser {
         Ok(node)
     }
 
+    fn assignment(&mut self, left: Node) -> Result<Node, ASTError> {
+        let token = self.current_token("assignment operator")?.clone(); 
+
+        let identifier = match left {
+            Node::Literal(ast::Literal::Identifier(ref name)) => name.clone(),
+            _ => Err(self.expected_node("identifier before assignment", &left))? 
+        };
+
+        if let TokenKind::Operator(ref operator) = token.kind {
+            if !operator.is_assigment() { Err(self.expected("assignment operator"))? }
+            self.advance();
+
+            let ast_operator = operator.to_ast_operator();
+            let right = self.expression()?;
+            let value = match ast_operator {
+                ast::Operator::Assign => right,
+                _ => Node::Expression(Expression::Binary { left: Box::new(left), operator: ast_operator, right: Box::new(right) })
+            };
+
+            Ok(Node::Statement(Statement::Assignment { name: identifier, value: Box::new(value) }))
+        } else {
+            Err(self.expected("assignment operator"))?
+        }
+    }
+
+    fn binary(&mut self, left: Node) -> Result<Node, ASTError> {
+        let token = self.current_token("binary operator")?.clone();
+
+        if let TokenKind::Operator(ref operator) = token.kind {
+            if !operator.is_binary() { Err(self.expected("binary operator"))? }
+            self.advance();
+
+            let ast_operator = operator.to_ast_operator();
+            let right = self.expression()?;
+
+            Ok(Node::Expression(Expression::Binary { left: Box::new(left), operator: ast_operator, right: Box::new(right) }))
+        } else {
+            Err(self.expected("binary operator"))?
+        }
+    }
+
     fn literal(&mut self) -> Result<Node, ASTError> {
         let token = self.current_token("literal")?;
 
