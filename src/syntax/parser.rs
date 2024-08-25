@@ -135,11 +135,11 @@ impl Parser {
 
     /// Expects the current token to be of the specified kind, consumes and returns it.
     fn expect(&mut self, kind: TokenKind) -> Result<&Token, ASTError> {
-        self.advance();
-        let token = self.previous();
-
-        match token {
-            Some(_) if self.previous().unwrap().kind == kind => Ok(self.previous().unwrap()),
+        match self.current() {
+            Some(token) if token.kind == kind => {
+                self.advance();
+                return Ok(self.previous().unwrap())
+            }
             _ => Err(self.expected(kind))
         }
     }
