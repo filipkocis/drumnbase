@@ -136,7 +136,13 @@ impl Tokenizer {
             '}' => Some(Symbol::RightBrace),
             '[' => Some(Symbol::LeftBracket),
             ']' => Some(Symbol::RightBracket),
-            _ => None,
+            _ => match (current, self.next()) {
+                ('-', Some('>')) => {
+                    self.advance();
+                    Some(Symbol::Arrow)
+                },
+                _ => None,
+            }
         };
 
         if let Some(symbol) = symbol {
