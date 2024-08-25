@@ -3,6 +3,7 @@ pub enum Node {
     Block(Vec<Node>),
     Literal(Literal),
     Statement(Statement),
+    Expression(Expression),
 }
 
 #[derive(Debug)]
@@ -12,6 +13,7 @@ pub enum Literal {
     String(String),
     Boolean(bool),
     Array(Vec<Node>),
+    // Object(Vec<(String, Node)>),
     Null,
 }
 
@@ -24,8 +26,9 @@ pub enum Number {
 
 #[derive(Debug)]
 pub enum Statement {
+    Assignment { name: String, value: Box<Node> },
     Expression(Expression),
-    Function { name: String, parameters: Vec<String>, return_type: Type, block: Box<Node> },
+    Function { name: String, parameters: Vec<(String, Type)>, return_type: Type, block: Box<Node> },
     Let { name: String, value: Box<Node> },
     Return(Box<Node>),
     If { condition: Box<Node>, then_block: Box<Node>, else_block: Option<Box<Node>> },
@@ -45,7 +48,7 @@ pub enum Type {
     String,
     Boolean,
     Pointer(Box<Type>),
-    Array(Box<Type>, usize),
+    Array(Box<Type>),
     Function(Vec<Type>, Box<Type>),
     Null,
 }
@@ -68,4 +71,7 @@ pub enum Operator {
     And, Or, Not,
     BitAnd, BitOr, BitXor, BitNot,
     ShiftLeft, ShiftRight,
+    
+    Assign, AddAssign, SubAssign, MulAssign, DivAssign, ModAssign, PowAssign,
+    Inc, Dec,
 }
