@@ -223,26 +223,45 @@ impl Parser {
     fn keyword(&mut self) -> Result<Node, ASTError> {
         let token = self.current_token("keyword")?;
 
-        if let TokenKind::Keyword(ref keyword) = token.kind {
+        let node = if let TokenKind::Keyword(ref keyword) = token.kind {
             match keyword {
-                Keyword::If => self.if_statement(),
+                Keyword::If => return self.if_statement(),
                 // Keyword::Else => self.else_statement(),
                 // Keyword::While => self.while_statement(),
                 // Keyword::For => self.for_statement(),
-                // Keyword::Function => self.function_declaration_statement(),
+                Keyword::Function => return self.function_declaration_statement(),
                 // Keyword::Return => self.return_statement(),
-                Keyword::Break => Ok(Node::Statement(Statement::Break)),
-                Keyword::Continue => Ok(Node::Statement(Statement::Continue)),
+                Keyword::Break => Node::Statement(Statement::Break),
+                Keyword::Continue => Node::Statement(Statement::Continue),
                 // Keyword::Let => self.let_statement(),
                 // Keyword::Const => self.const_statement(),
-                Keyword::True | Keyword::False => Ok(Node::Literal(ast::Literal::Boolean(keyword == &Keyword::True))),
-                Keyword::Null => Ok(Node::Literal(ast::Literal::Null)),
                 // _ => todo!("keyword")
-                _ => Err(self.expected("keyword"))?
+                k if k.is_literal() => return self.keyword_literal(),
+                _ => Err(self.expected("valid keyword"))?
             }
         } else {
             Err(self.expected("keyword"))?
-        }
+        };
+
+        self.advance(); // consume keyword created with Node::Kind
+        Ok(node)
+    }
+
+    fn keyword_literal(&mut self) -> Result<Node, ASTError> {
+        let token = self.current_token("keyword literal")?;
+
+        let node = if let TokenKind::Keyword(ref keyword) = token.kind {
+            match keyword {
+                Keyword::True | Keyword::False => Node::Literal(ast::Literal::Boolean(keyword == &Keyword::True)),
+                Keyword::Null => Node::Literal(ast::Literal::Null),
+                _ => Err(self.expected("keyword literal"))?
+            }
+        } else {
+            Err(self.expected("keyword literal"))?
+        };
+
+        self.advance();
+        Ok(node)
     }
 
     fn if_statement(&mut self) -> Result<Node, ASTError> {
@@ -287,7 +306,7 @@ impl Parser {
                 _ => statements.push(self.statement()?)
             }
 
-           match self.current() {
+            match self.current() {
                 Some(token) if token.kind == TokenKind::Symbol(Symbol::Semicolon) => self.advance(),
                 Some(token) if token.kind == TokenKind::Symbol(Symbol::RightBrace) => break,
                 Some(token) if token.kind == TokenKind::EOF => break,
