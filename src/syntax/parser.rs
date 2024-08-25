@@ -264,6 +264,22 @@ impl Parser {
         Ok(node)
     }
 
+    fn function_declaration_statement(&mut self) -> Result<Node, ASTError> {
+        self.expect(TokenKind::Keyword(Keyword::Function))?;
+
+        let name = match self.current() {
+            Some(Token { kind: TokenKind::Identifier(name), .. }) => name.clone(), 
+            _ => Err(self.expected("function name"))?
+        };
+        self.advance();
+
+        let parameters = self.parameters()?; 
+        let return_type = self.return_type()?;
+        let block = self.block()?;
+
+        Ok(Node::Statement(Statement::Function { name, parameters, return_type, block: Box::new(block) }))
+    }
+
     fn if_statement(&mut self) -> Result<Node, ASTError> {
         self.expect(TokenKind::Keyword(Keyword::If))?;
 
