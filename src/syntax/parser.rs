@@ -280,6 +280,31 @@ impl Parser {
         Ok(Node::Statement(Statement::Function { name, parameters, return_type, block: Box::new(block) }))
     }
 
+    fn parameters(&mut self) -> Result<Vec<(String, Type)>, ASTError> {
+        self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+        let mut parameters = Vec::new();
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Symbol(Symbol::RightParenthesis) => break,
+                TokenKind::Symbol(Symbol::Comma) => {
+                    self.advance();
+                    continue;
+                },
+                TokenKind::Identifier(ref name) => {
+                    let name = name.clone();
+                    self.advance(); 
+                    let parameter_type = self.parameter_type()?;
+                    parameters.push((name, parameter_type));
+                },
+                _ => Err(self.expected("parameter"))?
+            }
+        } 
+
+        self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?;
+        Ok(parameters)
+    }
+
     fn type_declaration(&mut self) -> Result<Type, ASTError> {
         let token = self.current_token("type")?;
 
@@ -310,6 +335,11 @@ impl Parser {
         };
 
         Ok(declared_type)
+    }
+
+    fn parameter_type(&mut self) -> Result<Type, ASTError> {
+        self.expect(TokenKind::Symbol(Symbol::Colon))?;
+        self.type_declaration()
     }
 
     fn return_type(&mut self) -> Result<Type, ASTError> {
