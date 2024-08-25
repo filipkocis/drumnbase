@@ -449,7 +449,7 @@ impl Parser {
                 Symbol::LeftBrace => self.block(),
                 Symbol::LeftBracket => self.array(),
                 // _ => todo!("symbol")
-                _ => Err(self.expected("symbol"))?
+                _ => Err(self.expected("valid symbol"))?
             }
         } else {
             Err(self.expected("symbol"))?
@@ -482,4 +482,33 @@ impl Parser {
         self.expect(TokenKind::Symbol(Symbol::RightBracket))?;
         Ok(Node::Literal(ast::Literal::Array(elements)))
     }
+    
+    fn identifier(&mut self) -> Result<Node, ASTError> {
+        let token = self.current_token("identifier")?;
+
+        let identifier = if let TokenKind::Identifier(ref identifier) = token.kind {
+            identifier.clone()
+        } else {
+            Err(self.expected("identifier"))?
+        };
+
+        self.advance();
+
+        match self.current() {
+            Some(token) => match token.kind {
+                TokenKind::Symbol(Symbol::LeftParenthesis) => {
+                    let arguments = self.arguments()?;
+                    Ok(Node::Expression(Expression::Call { name: identifier, arguments }))
+                },
+                // TokenKind::Symbol(Symbol::Period) => {
+                //     self.advance();
+                //     let property = self.identifier()?;
+                //     Ok(Node::Member { name: identifier, member: Box::new(property) })
+                // },
+                _ => Ok(Node::Literal(ast::Literal::Identifier(identifier)))
+            },
+            None => Ok(Node::Literal(ast::Literal::Identifier(identifier)))
+        }
+    }
+
 }
