@@ -511,4 +511,22 @@ impl Parser {
         }
     }
 
+    fn arguments(&mut self) -> Result<Vec<Node>, ASTError> {
+        self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+        let mut arguments = Vec::new();
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Symbol(Symbol::RightParenthesis) => break,
+                TokenKind::Symbol(Symbol::Comma) => {
+                    self.advance();
+                    continue;
+                }
+                _ => arguments.push(self.expression()?)
+            }
+        }
+
+        self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?;
+        Ok(arguments)
+    }
 }
