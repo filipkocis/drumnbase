@@ -280,6 +280,49 @@ impl Parser {
         Ok(Node::Statement(Statement::Function { name, parameters, return_type, block: Box::new(block) }))
     }
 
+    fn type_declaration(&mut self) -> Result<Type, ASTError> {
+        let token = self.current_token("type")?;
+
+        let declared_type = match token.kind {
+            TokenKind::Identifier(ref identifier) => {
+                let declared_type = match identifier.as_str() {
+                    "int" => Type::Int,
+                    "uint" => Type::UInt,
+                    "float" => Type::Float,
+                    "string" => Type::String,
+                    "bool" => Type::Boolean,
+                    _ => Err(self.expected("valid type"))?
+                };
+                self.advance();
+                declared_type
+            },
+            TokenKind::Operator(Operator::Multiply) => {
+                self.advance();
+                Type::Pointer(Box::new(self.type_declaration()?))
+            }
+            TokenKind::Symbol(Symbol::LeftBracket) => {
+                self.advance();
+                let declared_type = self.type_declaration()?;
+                self.expect(TokenKind::Symbol(Symbol::RightBracket))?;
+                Type::Array(Box::new(declared_type))
+            },
+            _ => Err(self.expected("valid type"))?
+        };
+
+        Ok(declared_type)
+    }
+
+    fn return_type(&mut self) -> Result<Type, ASTError> {
+        if let Some(token) = self.current() {
+            if token.kind == TokenKind::Symbol(Symbol::LeftBrace) {
+                return Ok(Type::Void)
+            }
+        }
+
+        self.expect(TokenKind::Symbol(Symbol::Arrow))?;
+        self.type_declaration()
+    }
+
     fn if_statement(&mut self) -> Result<Node, ASTError> {
         self.expect(TokenKind::Keyword(Keyword::If))?;
 
