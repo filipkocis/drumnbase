@@ -131,6 +131,7 @@ impl Parser {
 
         while let Some(token) = self.current() {
             if token.kind == TokenKind::EOF { break; }
+            let mut added_error = false;
 
             previous_current = self.current;
             match self.statement() {
@@ -141,12 +142,14 @@ impl Parser {
                         self.advance();
                     }
                     parser_error.extend(error);
+                    added_error = true;
                 }
             }
 
             match self.current() {
                 Some(token) if token.kind == TokenKind::Symbol(Symbol::Semicolon) => self.advance(),
                 Some(token) if token.kind == TokenKind::EOF => break,
+                Some(_) if added_error => continue,
                 Some(_) => parser_error.add(self.missing(TokenKind::Symbol(Symbol::Semicolon))),
                 _ => break
             }
@@ -427,12 +430,16 @@ impl Parser {
         let mut statements = Vec::new();
 
         while let Some(token) = self.current() {
+            let mut added_error = false;
             match token.kind {
                 TokenKind::Symbol(Symbol::RightBrace) => break,
                 _ => {
                     match self.statement() {
                         Ok(statement) => statements.push(statement),
-                        Err(error) => parser_error.extend(error)
+                        Err(error) => {
+                            parser_error.extend(error);
+                            added_error = true;
+                        }
                     }
                 }
             }
@@ -441,9 +448,8 @@ impl Parser {
                 Some(token) if token.kind == TokenKind::Symbol(Symbol::Semicolon) => self.advance(),
                 Some(token) if token.kind == TokenKind::Symbol(Symbol::RightBrace) => break,
                 Some(token) if token.kind == TokenKind::EOF => break,
-                Some(_) => {
-                    parser_error.add(self.missing(TokenKind::Symbol(Symbol::Semicolon)))
-                }
+                Some(_) if added_error => continue,
+                Some(_) => parser_error.add(self.missing(TokenKind::Symbol(Symbol::Semicolon))),
                 None => break
            }  
         }
