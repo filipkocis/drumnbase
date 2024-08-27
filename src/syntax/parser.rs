@@ -26,7 +26,33 @@ pub struct ParserError {
     errors: Vec<ASTError>,
 }
 
+impl From<ASTError> for ParserError {
+    fn from(error: ASTError) -> Self {
+        Self { errors: vec![error] }
+    }
+}
+
 impl ParserError {
+    pub fn add(&mut self, error: ASTError) {
+        self.errors.push(error);
+    }
+
+    pub fn extend(&mut self, parser_error: ParserError) {
+        self.errors.extend(parser_error.errors)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.errors.is_empty()
+    }
+
+    pub fn empty() -> Self {
+        Self { errors: Vec::new() }
+    }
+
+    pub fn from(error: ASTError) -> Self {
+        Self { errors: vec![error] }
+    }
+
     pub fn new(errors: Vec<ASTError>) -> Self {
         Self { errors }
     }
@@ -100,7 +126,7 @@ impl Parser {
 
     pub fn parse(&mut self) -> Result<Node, ParserError> {
         let mut statements = vec![];
-        let mut errors = vec![];
+        let mut parser_error = ParserError::empty();
         let mut previous_current;
 
         while let Some(token) = self.current() {
@@ -114,22 +140,22 @@ impl Parser {
                         // Prevent infinite loop
                         self.advance();
                     }
-                    errors.push(error);
+                    parser_error.extend(error);
                 }
             }
 
             match self.current() {
                 Some(token) if token.kind == TokenKind::Symbol(Symbol::Semicolon) => self.advance(),
                 Some(token) if token.kind == TokenKind::EOF => break,
-                Some(_) => errors.push(self.missing(TokenKind::Symbol(Symbol::Semicolon))),
+                Some(_) => parser_error.add(self.missing(TokenKind::Symbol(Symbol::Semicolon))),
                 _ => break
             }
         }
 
-        if errors.is_empty() {
+        if parser_error.is_empty() {
             Ok(Node::Block(statements))
         } else {
-            Err(ParserError::new(errors))
+            Err(parser_error)
         }
     }
 
@@ -210,7 +236,7 @@ impl Parser {
     }
 
 
-    fn statement(&mut self) -> Result<Node, ASTError> {
+    fn statement(&mut self) -> Result<Node, ParserError> {
         let token = self.current_token("statement")?;
 
         match token.kind {
@@ -220,7 +246,7 @@ impl Parser {
         }
     }
 
-    fn keyword(&mut self) -> Result<Node, ASTError> {
+    fn keyword(&mut self) -> Result<Node, ParserError> {
         let token = self.current_token("keyword")?;
 
         let node = if let TokenKind::Keyword(ref keyword) = token.kind {
@@ -247,7 +273,7 @@ impl Parser {
         Ok(node)
     }
 
-    fn keyword_literal(&mut self) -> Result<Node, ASTError> {
+    fn keyword_literal(&mut self) -> Result<Node, ParserError> {
         let token = self.current_token("keyword literal")?;
 
         let node = if let TokenKind::Keyword(ref keyword) = token.kind {
@@ -264,7 +290,7 @@ impl Parser {
         Ok(node)
     }
 
-    fn function_declaration_statement(&mut self) -> Result<Node, ASTError> {
+    fn function_declaration_statement(&mut self) -> Result<Node, ParserError> {
         self.expect(TokenKind::Keyword(Keyword::Function))?;
 
         let name = match self.current() {
@@ -280,8 +306,9 @@ impl Parser {
         Ok(Node::Statement(Statement::Function { name, parameters, return_type, block: Box::new(block) }))
     }
 
-    fn parameters(&mut self) -> Result<Vec<(String, Type)>, ASTError> {
+    fn parameters(&mut self) -> Result<Vec<(String, Type)>, ParserError> {
         self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+        let mut parser_error = ParserError::empty();
         let mut parameters = Vec::new();
 
         while let Some(token) = self.current() {
@@ -294,14 +321,26 @@ impl Parser {
                 TokenKind::Identifier(ref name) => {
                     let name = name.clone();
                     self.advance(); 
-                    let parameter_type = self.parameter_type()?;
-                    parameters.push((name, parameter_type));
+                    match self.parameter_type() {
+                        Ok(parameter_type) => parameters.push((name, parameter_type)),
+                        Err(error) => parser_error.add(error)
+                    }
                 },
-                _ => Err(self.expected("parameter"))?
+                _ => {
+                    parser_error.add(self.expected("parameter"));
+                    return Err(parser_error)
+                }
             }
         } 
 
-        self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?;
+        if let Err(err) = self.expect(TokenKind::Symbol(Symbol::RightParenthesis)) {
+            parser_error.add(err)
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
         Ok(parameters)
     }
 
@@ -353,7 +392,7 @@ impl Parser {
         self.type_declaration()
     }
 
-    fn if_statement(&mut self) -> Result<Node, ASTError> {
+    fn if_statement(&mut self) -> Result<Node, ParserError> {
         self.expect(TokenKind::Keyword(Keyword::If))?;
 
         let condition = self.expression()?;
@@ -382,17 +421,20 @@ impl Parser {
         }))
     }
 
-    fn block(&mut self) -> Result<Node, ASTError> {
-        // TODO: implement block error handling like in parse(), eat brace after error
+    fn block(&mut self) -> Result<Node, ParserError> {
         self.expect(TokenKind::Symbol(Symbol::LeftBrace))?;
-
+        let mut parser_error = ParserError::empty();
         let mut statements = Vec::new();
-        let mut errors = Vec::new();
 
         while let Some(token) = self.current() {
             match token.kind {
                 TokenKind::Symbol(Symbol::RightBrace) => break,
-                _ => statements.push(self.statement()?)
+                _ => {
+                    match self.statement() {
+                        Ok(statement) => statements.push(statement),
+                        Err(error) => parser_error.extend(error)
+                    }
+                }
             }
 
             match self.current() {
@@ -400,18 +442,24 @@ impl Parser {
                 Some(token) if token.kind == TokenKind::Symbol(Symbol::RightBrace) => break,
                 Some(token) if token.kind == TokenKind::EOF => break,
                 Some(_) => {
-                    errors.push(self.missing(TokenKind::Symbol(Symbol::Semicolon)))
+                    parser_error.add(self.missing(TokenKind::Symbol(Symbol::Semicolon)))
                 }
                 None => break
            }  
         }
 
-        // TODO: handle error return
-        self.expect(TokenKind::Symbol(Symbol::RightBrace))?;
+        if let Err(err) = self.expect(TokenKind::Symbol(Symbol::RightBrace)) {
+            parser_error.add(err);
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
         Ok(Node::Block(statements))
     }
 
-    fn expression(&mut self) -> Result<Node, ASTError> {
+    fn expression(&mut self) -> Result<Node, ParserError> {
         let token = self.current_token("expression")?;
 
         // expression can start with unary operator
@@ -465,7 +513,7 @@ impl Parser {
         Ok(node)
     }
 
-    fn assignment(&mut self, left: Node) -> Result<Node, ASTError> {
+    fn assignment(&mut self, left: Node) -> Result<Node, ParserError> {
         let token = self.current_token("assignment operator")?.clone(); 
 
         let identifier = match left {
@@ -490,7 +538,7 @@ impl Parser {
         }
     }
 
-    fn binary(&mut self, left: Node) -> Result<Node, ASTError> {
+    fn binary(&mut self, left: Node) -> Result<Node, ParserError> {
         let token = self.current_token("binary operator")?.clone();
 
         if let TokenKind::Operator(ref operator) = token.kind {
@@ -523,7 +571,7 @@ impl Parser {
         Ok(Node::Literal(literal))
     }
 
-    fn symbol(&mut self) -> Result<Node, ASTError> {
+    fn symbol(&mut self) -> Result<Node, ParserError> {
         let token = self.current_token("symbol")?;
         
         if let TokenKind::Symbol(ref symbol) = token.kind {
@@ -539,7 +587,7 @@ impl Parser {
         }
     }
 
-    fn group(&mut self) -> Result<Node, ASTError> {
+    fn group(&mut self) -> Result<Node, ParserError> {
         // TODO: implement group
         self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
         let expression = self.expression()?;
@@ -547,8 +595,9 @@ impl Parser {
         Ok(expression)
     }
 
-    fn array(&mut self) -> Result<Node, ASTError> {
+    fn array(&mut self) -> Result<Node, ParserError> {
         self.expect(TokenKind::Symbol(Symbol::LeftBracket))?;
+        let mut parser_error = ParserError::empty();
         let mut elements = Vec::new();
 
         while let Some(token) = self.current() {
@@ -558,15 +607,25 @@ impl Parser {
                     self.advance();
                     continue;
                 },
-                _ => elements.push(self.expression()?)
+                _ => match self.expression() {
+                    Ok(expression) => elements.push(expression),
+                    Err(error) => parser_error.extend(error)
+                }
             }
         }
 
-        self.expect(TokenKind::Symbol(Symbol::RightBracket))?;
+        if let Err(err) = self.expect(TokenKind::Symbol(Symbol::RightBracket)) {
+            parser_error.add(err);
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
         Ok(Node::Literal(ast::Literal::Array(elements)))
     }
     
-    fn identifier(&mut self) -> Result<Node, ASTError> {
+    fn identifier(&mut self) -> Result<Node, ParserError> {
         let token = self.current_token("identifier")?;
 
         let identifier = if let TokenKind::Identifier(ref identifier) = token.kind {
@@ -594,8 +653,9 @@ impl Parser {
         }
     }
 
-    fn arguments(&mut self) -> Result<Vec<Node>, ASTError> {
+    fn arguments(&mut self) -> Result<Vec<Node>, ParserError> {
         self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+        let mut parser_error = ParserError::empty();
         let mut arguments = Vec::new();
 
         while let Some(token) = self.current() {
@@ -605,11 +665,21 @@ impl Parser {
                     self.advance();
                     continue;
                 }
-                _ => arguments.push(self.expression()?)
+                _ => match self.expression() {
+                    Ok(expression) => arguments.push(expression),
+                    Err(error) => parser_error.extend(error)
+                }
             }
         }
 
-        self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?;
+        if let Err(err) = self.expect(TokenKind::Symbol(Symbol::RightParenthesis)) {
+            parser_error.add(err);
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error);
+        }
+
         Ok(arguments)
     }
 }
