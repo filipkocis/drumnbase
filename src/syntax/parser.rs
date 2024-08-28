@@ -19,6 +19,14 @@ impl ASTError {
     fn new(message: String, token: Token) -> Self {
         Self { message, token }
     }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
 }
 
 #[derive(Debug)]
@@ -33,6 +41,10 @@ impl From<ASTError> for ParserError {
 }
 
 impl ParserError {
+    pub fn errors(&self) -> &Vec<ASTError> {
+        &self.errors
+    }
+
     pub fn add(&mut self, error: ASTError) {
         self.errors.push(error);
     }
