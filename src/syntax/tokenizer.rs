@@ -316,7 +316,10 @@ impl Tokenizer {
             "true" => Some(Keyword::True),
             "false" => Some(Keyword::False),
             "null" => Some(Keyword::Null),
-            _ => None,
+            _ => match self.query(&value) {
+                Some(token) => return Ok(token),
+                _ => None,
+            },
         };
 
         let kind = match keyword {
@@ -325,6 +328,34 @@ impl Tokenizer {
         };
         
         self.ok_token(kind)
+    }
+
+    /// Parse query keywords
+    fn query(&self, value: &str) -> Option<Token> {
+        let query_keyword = match value {
+            "table" => QueryKeyword::Table,
+            "query" => QueryKeyword::Query,
+
+            "select" => QueryKeyword::Select,
+            "insert" => QueryKeyword::Insert,
+            "update" => QueryKeyword::Update,
+            "delete" => QueryKeyword::Delete,
+
+            "create" => QueryKeyword::Create,
+            "drop" => QueryKeyword::Drop,
+            "alter" => QueryKeyword::Alter,
+
+            "where" => QueryKeyword::Where,
+            "order" => QueryKeyword::Order,
+            "limit" => QueryKeyword::Limit,
+            "offset" => QueryKeyword::Offset,
+            "exclude" => QueryKeyword::Exclude,
+            "as" => QueryKeyword::As,
+    
+            _ => return None
+        };
+
+        self.ok_token(TokenKind::Query(query_keyword)).ok()
     }
 
     /// Parse number token

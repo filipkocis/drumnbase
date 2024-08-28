@@ -37,8 +37,31 @@ pub enum TokenKind {
     Identifier(String),
     Operator(Operator),
     Keyword(Keyword),
+    Query(QueryKeyword),
     Symbol(Symbol),
     EOF,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum QueryKeyword {
+    Table,
+    Query,
+
+    Select,
+    Insert,
+    Update,
+    Delete,
+
+    Create,
+    Drop,
+    Alter,
+    
+    Where,
+    Order,
+    Limit,
+    Offset,
+    Exclude,
+    As,
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use crate::syntax::token::TokenKind;
+use crate::{syntax::token::TokenKind};
 
-use super::{token::{Token, Keyword, Symbol, Literal, Operator}, ast::{Node, Statement, Number, self, Expression, Type}};
+use super::{token::{Token, Keyword, Symbol, Literal, Operator, QueryKeyword}, ast::{Node, Statement, Number, self, Expression, Type, SelectQuery, InsertQuery, UpdateQuery, DeleteQuery}};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -257,6 +257,7 @@ impl Parser {
         match token.kind {
             // TokenKind::EOF => Err("Unexpected EOF".to_string()),
             TokenKind::Keyword(_) => self.keyword(),
+            TokenKind::Query(_) => self.query(),
             _ => self.expression(),
         }
     }
@@ -276,7 +277,6 @@ impl Parser {
                 Keyword::Continue => Node::Statement(Statement::Continue),
                 // Keyword::Let => self.let_statement(),
                 // Keyword::Const => self.const_statement(),
-                // _ => todo!("keyword")
                 k if k.is_literal() => return self.keyword_literal(),
                 _ => Err(self.expected("valid keyword"))?
             }
@@ -642,8 +642,8 @@ impl Parser {
 
         Ok(Node::Literal(ast::Literal::Array(elements)))
     }
-    
-    fn identifier(&mut self) -> Result<Node, ParserError> {
+
+    fn identifier_name(&mut self) -> Result<String, ASTError> {
         let token = self.current_token("identifier")?;
 
         let identifier = if let TokenKind::Identifier(ref identifier) = token.kind {
@@ -653,6 +653,11 @@ impl Parser {
         };
 
         self.advance();
+        Ok(identifier)
+    }
+    
+    fn identifier(&mut self) -> Result<Node, ParserError> {
+        let identifier = self.identifier_name()?;
 
         match self.current() {
             Some(token) => match token.kind {
@@ -699,5 +704,248 @@ impl Parser {
         }
 
         Ok(arguments)
+    }
+}
+
+// QUERY
+impl Parser {
+    fn query(&mut self) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Query(QueryKeyword::Query))?;
+        
+        let table_name = self.identifier_name()?;
+        
+        match self.current() {
+            Some(token) => match token.kind {
+                TokenKind::Query(QueryKeyword::Select) => self.select_query(table_name),
+                TokenKind::Query(QueryKeyword::Insert) => self.insert_query(table_name),
+                TokenKind::Query(QueryKeyword::Update) => self.update_query(table_name),
+                TokenKind::Query(QueryKeyword::Delete) => self.delete_query(table_name),
+                _ => Err(self.expected("valid query type"))?
+            },
+            _ => Err(self.expected("query type"))?
+        }
+    }
+
+    fn delete_query(&mut self, table_name: String) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Query(QueryKeyword::Delete))?;
+        let query = DeleteQuery {
+            table: table_name,
+            where_clause: Some(self.query_where()?)
+        };
+
+        Ok(Node::Query(ast::Query::Delete(query)))
+    }
+
+    fn update_query(&mut self, table_name: String) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Query(QueryKeyword::Update))?;
+        let mut parser_error = ParserError::empty();
+
+        let key_values = match self.query_key_values() {
+            Ok(key_values) => key_values,
+            Err(error) => {
+                parser_error.extend(error);
+                Vec::new()
+            }
+        };
+
+        let where_clause = match self.query_where() {
+            Ok(where_clause) => where_clause,
+            Err(error) => {
+                parser_error.extend(error);
+                Err(parser_error)?
+            }
+        };
+
+        let query = UpdateQuery {
+            table: table_name,
+            key_values,
+            where_clause: Some(where_clause),
+        };
+
+        Ok(Node::Query(ast::Query::Update(query)))
+    }
+
+    fn insert_query(&mut self, table_name: String) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Query(QueryKeyword::Insert))?;
+        let query = InsertQuery {
+            table: table_name,
+            key_values: self.query_key_values()?,
+        };
+
+        Ok(Node::Query(ast::Query::Insert(query)))
+    }
+
+    fn query_key_values(&mut self) -> Result<Vec<(String, Node)>, ParserError> {
+        let mut parser_error = ParserError::empty();
+        let mut key_values = Vec::new();
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Query(_) => break,
+                TokenKind::Symbol(Symbol::Semicolon) => break,
+                TokenKind::EOF => break,
+                TokenKind::Identifier(ref key) |
+                TokenKind::Literal(Literal::String(ref key)) => {
+                    let key = key.clone();
+                    self.advance();
+                    if let Err(error) = self.expect(TokenKind::Symbol(Symbol::Colon)) {
+                        parser_error.add(error);
+                        continue;
+                    }
+                    let value = self.expression()?;
+                    key_values.push((key, value))
+                },
+                _ => parser_error.add(self.expected("key value"))
+            }
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
+        Ok(key_values)
+    }
+
+    fn select_query(&mut self, table_name: String) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Query(QueryKeyword::Select))?;
+
+        let mut parser_error = ParserError::empty();
+        let mut query = SelectQuery {
+            table: table_name,
+            columns: Vec::new(),
+            where_clause: None,
+            order: None,
+            limit: None,
+            offset: None,
+            exclude: None,
+        };
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Query(_) => break,
+                TokenKind::Symbol(Symbol::Comma) => { self.advance(); },
+                TokenKind::Operator(Operator::Multiply) => {
+                    self.advance();
+                    query.columns.push(Node::Literal(ast::Literal::Identifier("*".to_string())))
+                },
+                TokenKind::Identifier(_) => {
+                    match self.identifier() {
+                        Ok(node) => query.columns.push(node),
+                        Err(error) => parser_error.extend(error)
+                    }
+                },
+                _ => Err(self.expected("column name"))?
+            }
+        }
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Query(QueryKeyword::Where) => query.where_clause = Some(self.query_where()?),
+                TokenKind::Query(QueryKeyword::Order) => query.order = Some(self.query_order()?),
+                TokenKind::Query(QueryKeyword::Limit) => query.limit = Some(self.query_limit()?),
+                TokenKind::Query(QueryKeyword::Offset) => query.offset = Some(self.query_offset()?),
+                TokenKind::Query(QueryKeyword::Exclude) => query.exclude = Some(self.query_exclude()?),
+                _ => break
+            }
+        };
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
+        Ok(Node::Query(ast::Query::Select(query)))
+    }
+
+    fn query_where(&mut self) -> Result<Box<Node>, ParserError> {
+        self.expect(TokenKind::Query(QueryKeyword::Where))?;
+        Ok(Box::new(self.expression()?)) 
+    } 
+
+    fn query_order(&mut self) -> Result<Box<Node>, ASTError> {
+        self.expect(TokenKind::Query(QueryKeyword::Order))?;
+        
+        let column = match self.current() {
+            Some(Token { kind: TokenKind::Literal(Literal::String(column)), .. }) |
+            Some(Token { kind: TokenKind::Identifier(column), .. }) => column.clone(),
+            _ => Err(self.expected("column name"))?
+        };
+        self.advance();
+    
+        let order = match self.current() {
+            Some(Token { kind: TokenKind::Identifier(value), .. }) => {
+                match value.as_str() {
+                    "asc" => Operator::Increment,
+                    "desc" => Operator::Decrement,
+                    _ => Err(self.expected("valid order value"))?
+                }
+            }
+            _ => Err(self.expected("order value"))?,
+        };
+        self.advance();
+
+        Ok(Box::new(Node::Expression(ast::Expression::Unary {
+            operator: order.to_ast_operator(),
+            right: Box::new(Node::Literal(ast::Literal::Identifier(column)))
+        })))
+    }
+
+    fn query_limit(&mut self) -> Result<usize, ASTError> {
+        self.expect(TokenKind::Query(QueryKeyword::Limit))?;
+
+        match self.current() {
+            Some(Token { kind: TokenKind::Literal(Literal::Int(ref value)), .. }) => {
+                let value = value.parse().unwrap();
+                self.advance();
+                return Ok(value)
+            },
+            _ => Err(self.expected("limit value"))
+        }
+    }
+
+    fn query_offset(&mut self) -> Result<usize, ASTError> {
+        self.expect(TokenKind::Query(QueryKeyword::Offset))?;
+
+        match self.current() {
+            Some(Token { kind: TokenKind::Literal(Literal::Int(ref value)), .. }) => {
+                let value = value.parse().unwrap();
+                self.advance();
+                return Ok(value)
+            },
+            _ => Err(self.expected("offset value"))
+        }
+    }
+
+    fn query_exclude(&mut self) -> Result<Vec<String>, ParserError> {
+        self.expect(TokenKind::Query(QueryKeyword::Exclude))?;
+
+        let mut parser_error = ParserError::empty();
+        let mut columns = Vec::new();
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Query(_) => break,
+                TokenKind::Symbol(Symbol::Semicolon) => { break; },
+                TokenKind::Symbol(Symbol::Comma) => { },
+                TokenKind::Identifier(ref column) => {
+                    columns.push(column.clone());
+                    self.advance();
+                },
+                _ => parser_error.add(self.expected("column name"))
+            }
+
+            if let Some(token) = self.current() {
+                if token.kind == TokenKind::Symbol(Symbol::Comma) {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
+        Ok(columns)
     }
 }

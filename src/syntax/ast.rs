@@ -4,6 +4,45 @@ pub enum Node {
     Literal(Literal),
     Statement(Statement),
     Expression(Expression),
+    Query(Query),
+}
+
+#[derive(Debug)]
+pub enum Query {
+    Select(SelectQuery),
+    Insert(InsertQuery),
+    Update(UpdateQuery),
+    Delete(DeleteQuery),
+}
+
+#[derive(Debug)]
+pub struct SelectQuery {
+    pub table: String,
+    pub columns: Vec<Node>,
+    pub where_clause: Option<Box<Node>>,
+    pub order: Option<Box<Node>>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub exclude: Option<Vec<String>>,
+}
+
+#[derive(Debug)]
+pub struct InsertQuery {
+    pub table: String,
+    pub key_values: Vec<(String, Node)>,
+}
+
+#[derive(Debug)]
+pub struct UpdateQuery {
+    pub table: String,
+    pub key_values: Vec<(String, Node)>,
+    pub where_clause: Option<Box<Node>>,
+}
+
+#[derive(Debug)]
+pub struct DeleteQuery {
+    pub table: String,
+    pub where_clause: Option<Box<Node>>,
 }
 
 #[derive(Debug)]
