@@ -822,6 +822,7 @@ impl Parser {
 
         while let Some(token) = self.current() {
             match token.kind {
+                TokenKind::Symbol(Symbol::Semicolon) |
                 TokenKind::Query(_) => break,
                 TokenKind::Symbol(Symbol::Comma) => { self.advance(); },
                 TokenKind::Operator(Operator::Multiply) => {
