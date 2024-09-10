@@ -6,7 +6,7 @@ use super::Runner;
 
 impl Runner {
     pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Value, String> {
-        let function = Function::custom(name, parameters, block);
+        let function = Function::custom(name, parameters, return_type, block);
 
         let mut database = self.database.borrow_mut();
         if database.functions.contains_key(name) {
