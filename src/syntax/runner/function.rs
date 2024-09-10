@@ -1,20 +1,16 @@
 use std::collections::HashMap;
 
-use crate::{syntax::ast::{Node, Type}, basics::row::{Value, NumericValue}, database::database::{FunctionBody, Function}};
+use crate::{syntax::ast::{Node, Type}, basics::row::Value, function::builtin::{Function, FunctionBody}};
 
 use super::Runner;
 
 impl Runner {
     pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Value, String> {
-        let function = Function {
-            name: name.to_string(),
-            args: parameters.clone(),
-            body: FunctionBody::Custom(*block.clone())
-        };
+        let function = Function::custom(name, parameters, block);
 
         let mut database = self.database.borrow_mut();
         if database.functions.contains_key(name) {
-            return Err(format!("Functin '{}' already exists", name))
+            return Err(format!("Function '{}' already exists", name))
         }
 
         database.functions.insert(name.to_string(), function);
@@ -27,8 +23,8 @@ impl Runner {
         let database = self.database.borrow();
         
         if let Some(function) = database.functions.get(name) {
-            if function.args.len() != arguments.len() {
-                return Err(format!("Function '{}' expects {} arguments, got {}", name, function.args.len(), arguments.len()));
+            if function.params.len() != arguments.len() {
+                return Err(format!("Function '{}' expects {} arguments, got {}", name, function.params.len(), arguments.len()));
             }
 
             self.execute_function(function, arguments)
@@ -45,7 +41,7 @@ impl Runner {
 
         let mut variables = self.variables.borrow_mut();
         let mut previous = HashMap::new();
-        for ((param_name, param_type), value) in function.args.iter().zip(arguments) {
+        for ((param_name, param_type), value) in function.params.iter().zip(arguments) {
             if !self.check_type(param_type, &value) {
                 return Err(format!("Function '{}' expects argument '{}' to be of type '{:?}' but got '{:?}'",
                     function.name, param_name, param_type, self.get_type(&value)
