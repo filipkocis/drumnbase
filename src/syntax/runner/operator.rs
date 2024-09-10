@@ -3,7 +3,7 @@ use crate::{syntax::ast::{Operator, Node, Literal}, basics::row::{Value, Numeric
 use super::Runner;
 
 impl Runner {
-    pub(crate) fn eval_unary(&self, operator: &Operator, right_node: &Box<Node>) -> Result<Value, String> {
+    pub(super) fn eval_unary(&self, operator: &Operator, right_node: &Box<Node>) -> Result<Value, String> {
         let right = self.run(right_node)?;
 
         match operator {
@@ -48,7 +48,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_binary(&self, left: &Box<Node>, operator: &Operator, right: &Box<Node>) -> Result<Value, String> {
+    pub(super) fn eval_binary(&self, left: &Box<Node>, operator: &Operator, right: &Box<Node>) -> Result<Value, String> {
         let left = self.run(left)?;
         let right = self.run(right)?;
 

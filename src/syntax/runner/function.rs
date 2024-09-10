@@ -5,7 +5,7 @@ use crate::{syntax::ast::{Node, Type}, basics::row::{Value, NumericValue}, datab
 use super::Runner;
 
 impl Runner {
-    pub(crate) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Value, String> {
+    pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Value, String> {
         let function = Function {
             name: name.to_string(),
             args: parameters.clone(),
@@ -22,7 +22,7 @@ impl Runner {
         Ok(Value::Null)
     }
 
-    pub(crate) fn eval_call(&self, name: &str, arguments: &Vec<Node>) -> Result<Value, String> {
+    pub(super) fn eval_call(&self, name: &str, arguments: &Vec<Node>) -> Result<Value, String> {
         let arguments = arguments.iter().map(|arg| self.run(arg)).collect::<Result<Vec<Value>, String>>()?; 
         let database = self.database.borrow();
         

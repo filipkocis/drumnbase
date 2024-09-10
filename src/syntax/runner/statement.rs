@@ -50,7 +50,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_assignment(&self, name: &str, value: &Node) -> Result<Value, String> {
+    pub(super) fn eval_assignment(&self, name: &str, value: &Node) -> Result<Value, String> {
         let value = self.run(value)?;
         let mut variables = self.variables.borrow_mut();
         if let None = variables.get_mut(name).map(|v| *v = value) {

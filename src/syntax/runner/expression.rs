@@ -3,7 +3,7 @@ use crate::{syntax::ast::{Expression, Node}, basics::row::{Value, NumericValue}}
 use super::Runner;
 
 impl Runner {
-    pub(crate) fn eval_expression(&self, expression: &Expression) -> Result<Value, String> {
+    pub(super) fn eval_expression(&self, expression: &Expression) -> Result<Value, String> {
         match expression {
             Expression::Binary { left, operator, right }
                 => self.eval_binary(left, operator, right), 

@@ -3,7 +3,7 @@ use crate::basics::row::{Value, NumericValue};
 use super::Runner;
 
 impl Runner {
-    pub(crate) fn eval_add(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_add(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Ok(Value::Numeric(NumericValue::IntI64(left + right))),
@@ -34,7 +34,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_sub(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_sub(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Ok(Value::Numeric(NumericValue::IntI64(left - right))),
@@ -59,7 +59,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_mul(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_mul(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Ok(Value::Numeric(NumericValue::IntI64(left * right))),
@@ -83,7 +83,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_div(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_div(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Ok(Value::Numeric(NumericValue::IntI64(left / right))),
@@ -107,7 +107,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_mod(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_mod(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Ok(Value::Numeric(NumericValue::IntI64(left % right))),
@@ -131,7 +131,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_pow(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_pow(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Ok(Value::Numeric(NumericValue::IntI64((*left as f64).powf(*right as f64) as i64))),
@@ -155,7 +155,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_and(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_and(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Boolean(left), Value::Boolean(right)) => Ok(Value::Boolean(*left && *right)),
             (Value::Null, _) => Ok(Value::Null),
@@ -165,7 +165,7 @@ impl Runner {
         }
     }
 
-    pub(crate) fn eval_or(&self, left: &Value, right: &Value) -> Result<Value, String> {
+    pub(super) fn eval_or(&self, left: &Value, right: &Value) -> Result<Value, String> {
         match (left, right) {
             (Value::Boolean(left), Value::Boolean(right)) => Ok(Value::Boolean(*left || *right)),
             (Value::Null, _) => Ok(Value::Null),
