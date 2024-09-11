@@ -272,7 +272,7 @@ impl Parser {
                 // Keyword::While => self.while_statement(),
                 // Keyword::For => self.for_statement(),
                 Keyword::Function => return self.function_declaration_statement(),
-                // Keyword::Return => self.return_statement(),
+                Keyword::Return => return self.return_statement(),
                 Keyword::Break => Node::Statement(Statement::Break),
                 Keyword::Continue => Node::Statement(Statement::Continue),
                 Keyword::Let => return self.let_statement(),
@@ -286,6 +286,20 @@ impl Parser {
 
         self.advance(); // consume keyword created with Node::Kind
         Ok(node)
+    }
+
+    fn return_statement(&mut self) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Keyword(Keyword::Return))?;
+
+        let value = match self.current() {
+            Some(token) if token.kind == TokenKind::Symbol(Symbol::Semicolon) => {
+                self.advance();
+                Node::Literal(ast::Literal::Null)
+            },
+            _ => self.expression()?,
+        };
+
+        Ok(Node::Statement(Statement::Return(Box::new(value))))
     }
 
     fn let_statement(&mut self) -> Result<Node, ParserError> {
