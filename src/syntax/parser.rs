@@ -269,7 +269,7 @@ impl Parser {
             match keyword {
                 Keyword::If => return self.if_statement(),
                 // Keyword::Else => self.else_statement(),
-                // Keyword::While => self.while_statement(),
+                Keyword::While => return self.while_statement(),
                 // Keyword::For => self.for_statement(),
                 Keyword::Function => return self.function_declaration_statement(),
                 Keyword::Return => return self.return_statement(),
@@ -286,6 +286,18 @@ impl Parser {
 
         self.advance(); // consume keyword created with Node::Kind
         Ok(node)
+    }
+
+    fn while_statement(&mut self) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Keyword(Keyword::While))?;
+
+        let condition = self.expression()?;
+        let block = self.block()?;
+
+        Ok(Node::Statement(Statement::While { 
+            condition: Box::new(condition), 
+            block: Box::new(block) 
+        }))
     }
 
     fn return_statement(&mut self) -> Result<Node, ParserError> {
