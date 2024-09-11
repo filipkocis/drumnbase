@@ -56,4 +56,14 @@ impl Runner {
             Node::Value(value) => Ok(Some(value.clone()))
         }
     }
+
+    fn reset_scope(&self, saved_scope: HashMap<String, Option<Value>>) {
+        let mut variables = self.variables.borrow_mut();
+        for (name, value) in saved_scope {
+            match value {
+                Some(value) => variables.insert(name, value),
+                None => variables.remove(&name)
+            };
+        }
+    }
 }
