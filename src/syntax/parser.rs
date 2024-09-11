@@ -275,7 +275,7 @@ impl Parser {
                 // Keyword::Return => self.return_statement(),
                 Keyword::Break => Node::Statement(Statement::Break),
                 Keyword::Continue => Node::Statement(Statement::Continue),
-                // Keyword::Let => self.let_statement(),
+                Keyword::Let => return self.let_statement(),
                 // Keyword::Const => self.const_statement(),
                 k if k.is_literal() => return self.keyword_literal(),
                 _ => Err(self.expected("valid keyword"))?
@@ -286,6 +286,21 @@ impl Parser {
 
         self.advance(); // consume keyword created with Node::Kind
         Ok(node)
+    }
+
+    fn let_statement(&mut self) -> Result<Node, ParserError> {
+        self.expect(TokenKind::Keyword(Keyword::Let))?;
+
+        let name =  match self.current_token("identifier")? {
+            Token { kind: TokenKind::Identifier(name), .. } => name.clone(),
+            _ => Err(self.expected("identifier"))?
+        };
+        self.advance();
+        self.expect(TokenKind::Operator(Operator::Assign))?;
+
+        let value = self.statement()?;
+
+        Ok(Node::Statement(Statement::Let { name, value: Box::new(value) }))
     }
 
     fn keyword_literal(&mut self) -> Result<Node, ParserError> {
