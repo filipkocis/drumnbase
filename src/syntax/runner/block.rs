@@ -6,8 +6,20 @@ impl Runner {
     pub(super) fn eval_pure_block(&self, nodes: &Vec<Node>) -> Result<Option<Value>, String> {
         match self.eval_block(nodes)? {
             BlockResult::Return(value) => Ok(Some(value)),
-            BlockResult::Break => Err("Break outside of loop".to_string()),
-            BlockResult::Continue => Err("Continue outside of loop".to_string()),
+            BlockResult::Break => {
+                if *self.inside_loop.borrow() {
+                    Ok(None)
+                } else {
+                    Err("Break outside of loop".to_string())
+                }
+            },
+            BlockResult::Continue => {
+                if *self.inside_loop.borrow() {
+                    Ok(None)
+                } else {
+                    Err("Continue outside of loop".to_string())
+                }
+            },
             BlockResult::End => Ok(None),
         }
     }
@@ -24,13 +36,28 @@ impl Runner {
                             None => Err("Cannot return a statement without a value".to_string())?
                         }
                     }
-                    Statement::Break => return Ok(BlockResult::Break),
-                    Statement::Continue => return Ok(BlockResult::Continue),
+                    Statement::Break => {
+                        if !*self.inside_loop.borrow() {
+                            Err("Break outside of loop".to_string())?
+                        }
+                        self.break_loop.replace(true);
+                        return Ok(BlockResult::Break);
+                    },
+                    Statement::Continue => {
+                        if !*self.inside_loop.borrow() {
+                            Err("Continue outside of loop".to_string())?
+                        }
+                        self.continue_loop.replace(true);
+                        return Ok(BlockResult::Continue);
+                    },
                     _ => {}
                 }
             }
 
             let value = self.run(node)?;
+
+            if *self.break_loop.borrow() { return Ok(BlockResult::Break); }
+            if *self.continue_loop.borrow() { return Ok(BlockResult::Continue); }
 
             if i == len {
                 match value {

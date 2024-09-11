@@ -9,14 +9,16 @@ impl Runner {
             _ => return Err("Loop block must be a block".to_string())
         };
 
+        let inside_loop = self.inside_loop.replace(true); 
         loop {
             match self.eval_block(block_nodes)? {
                 BlockResult::Return(value) => return Ok(Some(value)),
-                BlockResult::Break => break,
-                BlockResult::Continue |
+                BlockResult::Break => { self.break_loop.replace(false); break; }
+                BlockResult::Continue => { self.continue_loop.replace(false); continue; }
                 BlockResult::End => continue,
             }
         };
+        self.inside_loop.replace(inside_loop);
 
         Ok(None)
     }
@@ -37,14 +39,16 @@ impl Runner {
 
         self.run(initializer)?;
 
+        let inside_loop = self.inside_loop.replace(true); 
         while let Value::Boolean(true) = self.run(condition)?.ok_or("For loop condition must return a value")? {
             match self.eval_block(block_nodes)? {
                 BlockResult::Return(value) => return Ok(Some(value)),
-                BlockResult::Break => break,
-                BlockResult::Continue |
-                BlockResult::End => self.run(action)?,
+                BlockResult::Break => { self.break_loop.replace(false); break; }
+                BlockResult::Continue => { self.continue_loop.replace(false); self.run(action)?; }
+                BlockResult::End => { self.run(action)?; }
             };
         }
+        self.inside_loop.replace(inside_loop);
 
         Ok(None)
     }
@@ -59,14 +63,16 @@ impl Runner {
             _ => return Err("While block must be a block".to_string())
         };
 
+        let inside_loop = self.inside_loop.replace(true); 
         while let Value::Boolean(true) = self.run(condition)?.ok_or("While condition must return a value")? {
             match self.eval_block(block_nodes)? {
                 BlockResult::Return(value) => return Ok(Some(value)),
-                BlockResult::Break => break,
-                BlockResult::Continue |
+                BlockResult::Break => { self.break_loop.replace(false); break; }
+                BlockResult::Continue => { self.continue_loop.replace(false); continue; }
                 BlockResult::End => continue,
             }
         }
+        self.inside_loop.replace(inside_loop);
 
         Ok(None)
     }

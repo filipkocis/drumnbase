@@ -28,13 +28,21 @@ enum BlockResult {
 pub struct Runner {
     pub database: Rc<RefCell<Database>>,
     pub variables: Rc<RefCell<HashMap<String, Value>>>,
+
+    inside_loop: RefCell<bool>,
+    break_loop: RefCell<bool>,
+    continue_loop: RefCell<bool>,
 }
 
 impl Runner {
     pub fn new(database: Rc<RefCell<Database>>) -> Self {
         Self {
             database,
-            variables: Rc::new(RefCell::new(HashMap::new()))
+            variables: Rc::new(RefCell::new(HashMap::new())),
+
+            inside_loop: RefCell::new(false),
+            break_loop: RefCell::new(false),
+            continue_loop: RefCell::new(false),
         }
     }
 
