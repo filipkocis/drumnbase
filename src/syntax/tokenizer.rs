@@ -307,6 +307,7 @@ impl Tokenizer {
             "if" => Some(Keyword::If),
             "else" => Some(Keyword::Else),
             "while" => Some(Keyword::While),
+            "for" => Some(Keyword::For),
             "function" | "fn" => Some(Keyword::Function),
             "return" => Some(Keyword::Return),
             "break" => Some(Keyword::Break),
