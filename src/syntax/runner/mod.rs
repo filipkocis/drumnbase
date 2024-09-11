@@ -15,9 +15,14 @@ mod function;
 mod r#type;
 
 enum BlockResult {
+    /// Either a return statement or the last auto-returned value
     Return(Value),
+    /// A break statement (valid in loops only)
     Break,
+    /// A continue statemnt (valid in loops only)
     Continue,
+    /// Block reached the end without a return statement
+    End,
 }
 
 pub struct Runner {

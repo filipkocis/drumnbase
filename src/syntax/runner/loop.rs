@@ -13,7 +13,8 @@ impl Runner {
             match self.eval_block(block_nodes)? {
                 BlockResult::Return(value) => return Ok(value),
                 BlockResult::Break => break,
-                BlockResult::Continue => continue,
+                BlockResult::Continue |
+                BlockResult::End => continue,
             }
         };
 
@@ -40,7 +41,8 @@ impl Runner {
             match self.eval_block(block_nodes)? {
                 BlockResult::Return(value) => return Ok(value),
                 BlockResult::Break => break,
-                BlockResult::Continue => self.run(action)?,
+                BlockResult::Continue |
+                BlockResult::End => self.run(action)?,
             };
         }
 
@@ -61,7 +63,8 @@ impl Runner {
             match self.eval_block(block_nodes)? {
                 BlockResult::Return(value) => return Ok(value),
                 BlockResult::Break => break,
-                BlockResult::Continue => continue,
+                BlockResult::Continue |
+                BlockResult::End => continue,
             }
         }
 

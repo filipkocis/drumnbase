@@ -7,7 +7,8 @@ impl Runner {
         match self.eval_block(nodes)? {
             BlockResult::Return(value) => Ok(value),
             BlockResult::Break => Err("Break outside of loop".to_string()),
-            BlockResult::Continue => Err("Continue outside of loop".to_string())
+            BlockResult::Continue => Err("Continue outside of loop".to_string()),
+            BlockResult::End => Ok(Value::Null)
         }
     }
 
