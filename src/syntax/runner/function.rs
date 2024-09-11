@@ -5,7 +5,7 @@ use crate::{syntax::ast::{Node, Type}, basics::row::Value, function::builtin::{F
 use super::Runner;
 
 impl Runner {
-    pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Value, String> {
+    pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Option<Value>, String> {
         let function = Function::custom(name, parameters, return_type, block);
 
         let mut database = self.database.borrow_mut();
@@ -15,11 +15,20 @@ impl Runner {
 
         database.functions.insert(name.to_string(), function);
 
-        Ok(Value::Null)
+        Ok(None)
     }
 
-    pub(super) fn eval_call(&self, name: &str, arguments: &Vec<Node>) -> Result<Value, String> {
-        let arguments = arguments.iter().map(|arg| self.run(arg)).collect::<Result<Vec<Value>, String>>()?; 
+    pub(super) fn eval_call(&self, name: &str, arguments: &Vec<Node>) -> Result<Option<Value>, String> {
+        let arguments = arguments.iter()
+            .map(|arg| match self.run(arg) {
+                    Ok(value) => match value {
+                        Some(value) => Ok(value),
+                        None => Err("Cannot pass a statement without a return value as an argument".to_string())
+                    }
+                    Err(e) => Err(e)
+                }
+            )
+            .collect::<Result<Vec<Value>, String>>()?; 
         let database = self.database.borrow();
         
         if let Some(function) = database.functions.get(name) {
@@ -33,7 +42,7 @@ impl Runner {
         }
     }
 
-    fn execute_function(&self, function: &Function, arguments: Vec<Value>) -> Result<Value, String> {
+    fn execute_function(&self, function: &Function, arguments: Vec<Value>) -> Result<Option<Value>, String> {
         let body = match &function.body {
             FunctionBody::Custom(body) => body,
             FunctionBody::BuiltIn(function) => return function(self.database.clone(), &arguments),

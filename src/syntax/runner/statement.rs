@@ -3,7 +3,7 @@ use crate::{syntax::ast::{Statement, Node}, basics::row::Value};
 use super::Runner;
 
 impl Runner {
-    pub(super) fn eval_statement(&self, statement: &Statement) -> Result<Value, String> {
+    pub(super) fn eval_statement(&self, statement: &Statement) -> Result<Option<Value>, String> {
         match statement {
             Statement::Assignment { name, value } => self.eval_assignment(name, value),
             Statement::Expression(_) => unimplemented!("statement expression"),
@@ -22,41 +22,47 @@ impl Runner {
             Statement::Continue => Err("Continue outside of loop".to_string()),
         }
     }
-    fn eval_if(&self, condition: &Node, then_block: &Box<Node>, else_block: &Option<Box<Node>>) -> Result<Value, String> {
+
+    fn eval_if(&self, condition: &Node, then_block: &Box<Node>, else_block: &Option<Box<Node>>) -> Result<Option<Value>, String> {
         if !matches!(condition, Node::Expression(_)) {
             return Err("If condition must be an expression".to_string())
         }
 
-        let condition = self.run(condition)?;
+        let condition = self.run(condition)?.ok_or("If condition must return a value")?;
+
+        if !matches!(condition, Value::Boolean(_)) {
+            return Err("If condition must return a boolean".to_string())
+        }
+
         if let Value::Boolean(true) = condition {
             self.run(then_block)
         } else {
             if let Some(else_block) = else_block {
                 self.run(else_block)
             } else {
-                Ok(Value::Null)
+                Ok(None)
             }
         }
     }
 
-    fn eval_declaration(&self, name: &str, value: &Node) -> Result<Value, String> {
-        let value = self.run(value)?;
+    fn eval_declaration(&self, name: &str, value: &Node) -> Result<Option<Value>, String> {
+        let value = self.run(value)?.ok_or("Cannot declare a statement without a return value")?;
         let mut variables = self.variables.borrow_mut();
         if variables.contains_key(name) {
             Err(format!("Variable '{}' already exists", name))
         } else {
             variables.insert(name.to_string(), value);
-            Ok(Value::Null)
+            Ok(None)
         }
     }
 
-    pub(super) fn eval_assignment(&self, name: &str, value: &Node) -> Result<Value, String> {
-        let value = self.run(value)?;
+    pub(super) fn eval_assignment(&self, name: &str, value: &Node) -> Result<Option<Value>, String> {
+        let value = self.run(value)?.ok_or("Cannot assign a statement without a return value")?;
         let mut variables = self.variables.borrow_mut();
         if let None = variables.get_mut(name).map(|v| *v = value) {
             Err(format!("Variable '{}' not found", name))
         } else {
-            Ok(Value::Null)
+            Ok(None)
         }
     }
 }

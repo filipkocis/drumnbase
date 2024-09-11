@@ -38,14 +38,14 @@ impl Runner {
         }
     }
 
-    pub fn run(&self, ast: &Node) -> Result<Value, String> {
+    pub fn run(&self, ast: &Node) -> Result<Option<Value>, String> {
         match ast {
             Node::Literal(value) => self.eval_literal(value),
             Node::Block(nodes) => self.eval_pure_block(nodes),
             Node::Statement(statement) => self.eval_statement(statement),
             Node::Expression(expression) => self.eval_expression(expression),
             Node::Query(_) => unimplemented!("query"),
-            Node::Value(value) => Ok(value.clone())
+            Node::Value(value) => Ok(Some(value.clone()))
         }
     }
 }

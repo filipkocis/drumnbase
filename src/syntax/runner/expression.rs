@@ -3,7 +3,7 @@ use crate::{syntax::ast::{Expression, Node}, basics::row::{Value, NumericValue}}
 use super::Runner;
 
 impl Runner {
-    pub(super) fn eval_expression(&self, expression: &Expression) -> Result<Value, String> {
+    pub(super) fn eval_expression(&self, expression: &Expression) -> Result<Option<Value>, String> {
         match expression {
             Expression::Binary { left, operator, right }
                 => self.eval_binary(left, operator, right), 
@@ -16,13 +16,13 @@ impl Runner {
         }
     }
 
-    fn eval_index(&self, name: &str, index: &Box<Node>) -> Result<Value, String> {
+    fn eval_index(&self, name: &str, index: &Box<Node>) -> Result<Option<Value>, String> {
         let index = self.run(index)?;
         let variables = self.variables.borrow();
         if let Some(Value::Array(array)) = variables.get(name) {
-            if let Value::Numeric(NumericValue::IntU64(index)) = index {
+            if let Value::Numeric(NumericValue::IntU64(index)) = index.ok_or("Index cannot be a statement")? {
                 if let Some(value) = array.get(index as usize) {
-                    return Ok(value.clone())
+                    return Ok(Some(value.clone()))
                 }
             }
         }
