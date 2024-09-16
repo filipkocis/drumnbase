@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{syntax::ast::{Node, Type}, basics::row::Value, function::builtin::{Function, FunctionBody}};
+use crate::{syntax::ast::{Node, Type}, basics::row::Value, function::{Function, FunctionBody}};
 
 use super::Runner;
 

@@ -1,4 +1,6 @@
-use crate::basics::table::Table;
+use std::collections::HashMap;
+
+use crate::{basics::table::Table, function::Function};
 
 #[derive(Debug)]
 pub struct Database {
@@ -6,7 +8,7 @@ pub struct Database {
     pub tables: Vec<Table>,
     pub root_dir: String,
     // pub views: Vec<View>,
-    // pub functions: Vec<Function>,
+    pub functions: HashMap<String, Function>,
     // pub procedures: Vec<Procedure>,
     // pub triggers: Vec<Trigger>,
     // pub indexes: Vec<Index>,
@@ -25,6 +27,7 @@ impl Default for Database {
             name: String::from(""),
             tables: vec![],
             root_dir: String::from("data"),
+            functions: HashMap::new(),
         }
     } 
 }

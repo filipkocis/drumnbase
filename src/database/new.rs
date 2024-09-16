@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::database::Database;
 use crate::parser::Schema;
 
@@ -7,6 +9,7 @@ impl Database {
             name: name.to_string(),
             tables: schema.tables,
             root_dir: root_dir.to_string(),
+            functions: HashMap::new(),
         }
     }
 }
