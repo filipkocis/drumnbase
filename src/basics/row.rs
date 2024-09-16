@@ -54,7 +54,7 @@ impl Display for Value {
 }
 
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone)]
 pub enum NumericValue {
     IntU8(u8),
     IntU16(u16),
@@ -68,6 +68,51 @@ pub enum NumericValue {
 
     Float32(f32),
     Float64(f64),
+}
+
+impl PartialOrd for NumericValue {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for NumericValue {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let self_f64 = self.to_f64();
+        let other_f64 = other.to_f64();
+
+        self_f64.partial_cmp(&other_f64).unwrap_or(std::cmp::Ordering::Equal)
+    }
+}
+
+impl PartialEq for NumericValue {
+    fn eq(&self, other: &Self) -> bool {
+        let self_f64 = self.to_f64();
+        let other_f64 = other.to_f64();
+
+        self_f64 == other_f64
+    }
+}
+
+impl Eq for NumericValue { }
+
+impl NumericValue {
+    fn to_f64(&self) -> f64 {
+        match *self {
+            NumericValue::IntU8(v) => v as f64,
+            NumericValue::IntU16(v) => v as f64,
+            NumericValue::IntU32(v) => v as f64,
+            NumericValue::IntU64(v) => v as f64,
+
+            NumericValue::IntI8(v) => v as f64,
+            NumericValue::IntI16(v) => v as f64,
+            NumericValue::IntI32(v) => v as f64,
+            NumericValue::IntI64(v) => v as f64,
+
+            NumericValue::Float32(v) => v as f64,
+            NumericValue::Float64(v) => v,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
