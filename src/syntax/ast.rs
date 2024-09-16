@@ -1,21 +1,25 @@
-#[derive(Debug)]
+use crate::basics::row::Value;
+
+#[derive(Debug, Clone)]
 pub enum Node {
     Block(Vec<Node>),
     Literal(Literal),
     Statement(Statement),
     Expression(Expression),
     Query(Query),
+    Value(Value),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Query {
+    // ColumnIndex(usize),
     Select(SelectQuery),
     Insert(InsertQuery),
     Update(UpdateQuery),
     Delete(DeleteQuery),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SelectQuery {
     pub table: String,
     pub columns: Vec<Node>,
@@ -26,26 +30,26 @@ pub struct SelectQuery {
     pub exclude: Option<Vec<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InsertQuery {
     pub table: String,
     pub key_values: Vec<(String, Node)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UpdateQuery {
     pub table: String,
     pub key_values: Vec<(String, Node)>,
     pub where_clause: Option<Box<Node>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DeleteQuery {
     pub table: String,
     pub where_clause: Option<Box<Node>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     Identifier(String),
     Number(Number),
@@ -56,14 +60,14 @@ pub enum Literal {
     Null,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Number {
     Int(i64),
     UInt(u64),
     Float(f64),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Assignment { name: String, value: Box<Node> },
     Expression(Expression),
@@ -78,7 +82,7 @@ pub enum Statement {
     Continue,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Type {
     Void,
     Int,
@@ -90,9 +94,10 @@ pub enum Type {
     Array(Box<Type>),
     Function(Vec<Type>, Box<Type>),
     Null,
+    Any,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Binary { left: Box<Node>, operator: Operator, right: Box<Node> },
     Unary { operator: Operator, right: Box<Node> },
@@ -103,7 +108,7 @@ pub enum Expression {
     Dereference(Box<Node>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Operator {
     Add, Sub, Mul, Div, Mod, Pow,
     Eq, Ne, Lt, Le, Gt, Ge,
