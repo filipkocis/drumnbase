@@ -13,6 +13,7 @@ mod math;
 mod operator;
 mod function;
 mod r#type;
+mod query;
 
 enum BlockResult {
     /// Either a return statement or the last auto-returned value
@@ -52,7 +53,7 @@ impl Runner {
             Node::Block(nodes) => self.eval_pure_block(nodes),
             Node::Statement(statement) => self.eval_statement(statement),
             Node::Expression(expression) => self.eval_expression(expression),
-            Node::Query(_) => unimplemented!("query"),
+            Node::Query(query) => self.eval_query(query),
             Node::Value(value) => Ok(Some(value.clone()))
         }
     }
