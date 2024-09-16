@@ -44,7 +44,6 @@ impl Runner {
             Query::Insert(q) => &q.table,
             Query::Update(q) => &q.table,
             Query::Delete(q) => &q.table,
-            _ => panic!("Unsupported query type {:?}", query)
         }
     }
 
