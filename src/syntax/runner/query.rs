@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{syntax::ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, basics::row::{Value, Row}};
+use crate::{syntax::ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, basics::row::{Value, Row, NumericValue}};
 
 use super::Runner;
 
@@ -306,7 +306,80 @@ impl Runner {
     }
     
     fn eval_update(&self, update: &UpdateQuery) -> Result<Option<Value>, String> {
-        todo!()
+        // eval the key_values
+        let mut key_values = vec![];
+        for (key, value) in &update.key_values {
+            let value = self.run(value)?.expect(&format!("Value for column '{}' was not evaluated", key));
+            key_values.push((key, value));
+        }
+        // TODO: check duplicates
+
+        let mut database = self.database.borrow_mut();
+        let table = database.get_table_mut(&update.table).unwrap();
+        let column_names = update.key_values.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>();
+        let column_map = table.get_column_map(&table.get_column_names()).unwrap();
+
+        // check if columns exist in the table
+        // table.check_columns_exist(&column_names)?;
+        column_names.iter().map(|name| {
+            table.check_column_exists(name)
+        }).collect::<Result<_, _>>()?;        
+
+        // check if any of the columns have unique constraints
+        let unique_columns = column_names.iter().filter(|name| {
+            table.get_column(name).unwrap().unique
+        }).collect::<Vec<_>>();
+
+        if unique_columns.len() > 0 {
+            // TODO: implement 'limit single'
+            return Err(format!("Columns '{:?}' have unique constraint, to update such columns, use 'limit single'", unique_columns))
+        }
+
+        // TODO: get_parsed_key_vals, this is the manual way
+        let mut parsed_key_vals = vec![];
+        for (name, value) in &key_values {
+            let i = table.get_column_index(name).unwrap();
+            let value_str = match value {
+                Value::Null => None,
+                v => Some(v.to_string())
+            };
+
+            let parsed_value = table.columns[i].validate_option(&value_str)?;
+            parsed_key_vals.push((i, parsed_value));
+        }
+        let column_indexes = parsed_key_vals.iter().map(|(i, _)| *i).collect::<Vec<_>>();
+
+        // evaluate where clause on each row
+        let mut updated_rows_count = 0;
+        for index in 0..table.data.len() {
+            let row = table.data.get_mut(index).unwrap();
+            if row.is_deleted() { continue }
+            
+            let mut variables = self.variables.borrow_mut(); 
+            for (name, j) in &column_map {
+                variables.insert(name.to_string(), row.get(*j).unwrap().clone());
+            }
+            drop(variables);
+
+            let where_clause_result = match &update.where_clause {
+                Some(node) => self.run(node),
+                // None => Ok(Some(Value::Boolean(true)))
+                None => return Err("Update query must have a where clause".to_string())
+            };
+
+            match where_clause_result {
+                Ok(Some(Value::Boolean(true))) => {
+                    row.update_with(&parsed_key_vals);
+                    table.sync_row_parts(index, &column_indexes)?;                           
+                    updated_rows_count += 1;
+                },
+                Ok(Some(Value::Boolean(false))) => (),
+                Ok(_) => return Err("Where clause must return a boolean value".to_string()),
+                Err(err) => return Err(err)
+            };
+        }
+        
+        Ok(Some(Value::Numeric(NumericValue::IntU64(updated_rows_count as u64))))
     }
 
     fn eval_delete(&self, delete: &DeleteQuery) -> Result<Option<Value>, String> {
