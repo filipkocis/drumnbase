@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{syntax::ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, basics::row::Value};
+use crate::{syntax::ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, basics::row::{Value, Row}};
 
 use super::Runner;
 
@@ -230,7 +230,79 @@ impl Runner {
     }
 
     fn eval_insert(&self, insert: &InsertQuery) -> Result<Option<Value>, String> {
-        todo!()
+        // eval the key_values
+        let mut key_values = vec![];
+        for (key, value) in &insert.key_values {
+            let value = self.run(value)?.expect(&format!("Value for column '{}' was not evaluated", key));
+            key_values.push((key, value));
+        }
+        // TODO: check duplicates
+
+        let mut database = self.database.borrow_mut();
+        let table = database.get_table_mut(&insert.table).unwrap();
+        let column_names = insert.key_values.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>();
+        
+        // check if columns exist in the table
+        // table.check_columns_exist(&column_names)?;
+        column_names.iter().map(|name| {
+            table.check_column_exists(name)
+        }).collect::<Result<_, _>>()?;
+
+        // check if required columns are present
+        let missing_columns = table.columns.iter().filter_map(|column| {
+            if !column_names.contains(&column.name.as_ref()) 
+                && column.not_null && column.default.is_none() {
+                Some(column.name.clone())
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>();
+
+        if missing_columns.len() > 0 {
+            return Err(format!("Missing required columns: {:?}", missing_columns));
+        }
+
+        // create row
+        // let row = table.create_row(&key_values)?;
+        let mut row = Row::new();
+        for (i, column) in table.columns.iter().enumerate() {
+            let value = match key_values.iter().find(|(key, _)| *key == &column.name) {
+                Some((_, value)) => Some(value.clone()),
+                None => match column.default {
+                    Some(ref default) => {
+                        let value = column.data_type.parse(default)?;  
+                        Some(value) 
+                    },
+                    None => match column.not_null {
+                        true => return Err(format!("Column '{}' does not allow NULL values", column.name)),
+                        false => None,
+                    }
+                }
+            };
+
+            let value = value.unwrap_or(Value::Null);
+
+            // TODO: fix this 
+            // we have to use this way of converting back to str and then to value since thats the
+            // old way of doing this in the previous query runner which should be deprecated
+            let value_str = match value {
+                Value::Null => None,
+                v => Some(v.to_string())
+            };
+
+            let parsed_value = column.validate_option(&value_str)?;
+            
+            row.set(i, parsed_value)
+        }
+
+        // check if row passes all unique constraints
+        table.check_unique(&row)?;
+
+        let row_values = row.iter().map(|value| value.clone()).collect();
+        table.data.buf_rows.push(row);
+        table.sync_buffer()?;
+
+        Ok(Some(Value::Array(vec![Value::Array(row_values)])))
     }
     
     fn eval_update(&self, update: &UpdateQuery) -> Result<Option<Value>, String> {
