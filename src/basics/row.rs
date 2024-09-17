@@ -45,7 +45,7 @@ impl Display for Value {
             Value::Timestamp(s) => write!(f, "{}", s),
             Value::Boolean(s) => write!(f, "{}", s),
             Value::Binary(s) => write!(f, "{:?}", s),
-            Value::Array(s) => write!(f, "{}", s.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", ")),
+            Value::Array(s) => write!(f, "[{}]", s.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", ")),
             Value::Enum(s) => write!(f, "{}", s),
             Value::UUID(s) => write!(f, "{}", s),
             Value::Null => write!(f, "NULL"),
