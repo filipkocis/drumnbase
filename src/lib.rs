@@ -6,3 +6,4 @@ pub mod parser;
 pub mod query;
 pub mod function;
 pub mod syntax;
+pub mod random;
