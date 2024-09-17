@@ -130,20 +130,15 @@ fn round() -> Function {
 
 fn abs() -> Function {
     let name = "abs";
-    let params = vec![("value", Type::Float)];
+    let params = vec![("value", Type::Any)];
     let return_type = Type::Float;
 
     let body = |_: Rc<RefCell<Database>>, args: &[Value]| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         match value {
-            Value::Numeric(NumericValue::Float32(f))
-                => Ok(Some(Value::Numeric(NumericValue::Float32(f.abs())))),
-            Value::Numeric(NumericValue::Float64(f)) 
-                => Ok(Some(Value::Numeric(NumericValue::Float64(f.abs())))),
-            Value::Numeric(NumericValue::IntI64(i))
-                => Ok(Some(Value::Numeric(NumericValue::IntI64(i.abs())))),
-            // TODO signed
-            _ => Err("Expected argument 'value' to be of type 'float' or 'signed'".to_string())
+            Value::Numeric(n)
+                => Ok(Some(Value::Numeric(NumericValue::Float64(n.to_f64().abs())))),
+            _ => Err("Expected argument 'value' to be of type 'number'".to_string())
         }
     };
 
@@ -152,17 +147,15 @@ fn abs() -> Function {
 
 fn sqrt() -> Function {
     let name = "sqrt";
-    let params = vec![("value", Type::Float)];
+    let params = vec![("value", Type::Any)];
     let return_type = Type::Float;
 
     let body = |_: Rc<RefCell<Database>>, args: &[Value]| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         match value {
-            Value::Numeric(NumericValue::Float32(f))
-                => Ok(Some(Value::Numeric(NumericValue::Float32(f.sqrt())))),
-            Value::Numeric(NumericValue::Float64(f)) 
-                => Ok(Some(Value::Numeric(NumericValue::Float64(f.sqrt())))),
-            _ => Err("Expected argument 'value' to be of type 'float'".to_string())
+            Value::Numeric(n) 
+                => Ok(Some(Value::Numeric(NumericValue::Float64(n.to_f64().abs())))),
+            _ => Err("Expected argument 'value' to be of type 'number'".to_string())
         }
     };
 
@@ -171,18 +164,16 @@ fn sqrt() -> Function {
 
 fn pow() -> Function {
     let name = "pow";
-    let params = vec![("base", Type::Float), ("exponent", Type::Float)];
+    let params = vec![("base", Type::Any), ("exponent", Type::Any)];
     let return_type = Type::Float;
 
     let body = |_: Rc<RefCell<Database>>, args: &[Value]| {
         let base = args.get(0).ok_or("Expected argument 'base'")?;
         let exponent = args.get(1).ok_or("Expected argument 'exponent'")?;
         match (base, exponent) {
-            (Value::Numeric(NumericValue::Float32(b)), Value::Numeric(NumericValue::Float32(e)))
-                => Ok(Some(Value::Numeric(NumericValue::Float32(b.powf(*e))))),
-            (Value::Numeric(NumericValue::Float64(b)), Value::Numeric(NumericValue::Float64(e))) 
-                => Ok(Some(Value::Numeric(NumericValue::Float64(b.powf(*e))))),
-            _ => Err("Expected arguments 'base' and 'exponent' to be of type 'float'".to_string())
+            (Value::Numeric(n1), Value::Numeric(n2))
+                => Ok(Some(Value::Numeric(NumericValue::Float64(n1.to_f64().powf(n2.to_f64()))))),
+            _ => Err("Expected arguments 'base' and 'exponent' to be of type 'number'".to_string())
         }
     };
 
