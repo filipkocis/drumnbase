@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, time::{SystemTime, UNIX_EPOCH}};
 
-use crate::{database::database::Database, syntax::ast::Type, basics::row::{Value, TimestampValue, NumericValue}};
+use crate::{database::database::Database, syntax::ast::Type, basics::row::{Value, TimestampValue, NumericValue}, random::Random};
 
 use super::Function;
 
@@ -17,6 +17,8 @@ impl Database {
             sqrt(),
             pow(),
             len(),
+            random(),
+            random_range(),
         ];
 
         for function in functions {
@@ -182,7 +184,6 @@ fn pow() -> Function {
 
 // fn min()
 // fn max()
-// fn random()
 
 fn len() -> Function {
     let name = "len";
@@ -196,6 +197,46 @@ fn len() -> Function {
             Value::Array(a) => Ok(Some(Value::Numeric(NumericValue::IntU64(a.len() as u64)))),
             _ => Err("Expected argument 'value' to be of type 'text' or 'array'".to_string())
         }
+    };
+
+    Function::built_in(name, params, return_type, body)
+}
+
+fn random() -> Function {
+    let name = "random";
+    let params = vec![];
+    let return_type = Type::Float;
+
+    let body = |_: Rc<RefCell<Database>>, _: &[Value]| {
+        let random = Random::gen();
+
+        Ok(Some(Value::Numeric(NumericValue::Float64(random))))
+    };
+
+    Function::built_in(name, params, return_type, body)
+}
+
+fn random_range() -> Function {
+    let name = "random_range";
+    let params = vec![("min", Type::Float), ("max", Type::Float)];
+    let return_type = Type::Float;
+
+    let body = |_: Rc<RefCell<Database>>, args: &[Value]| {
+        let min = args.get(0).ok_or("Expected argument 'min'")?;
+        let max = args.get(1).ok_or("Expected argument 'max'")?;
+
+        let min = match min {
+            Value::Numeric(n) => n.to_f64(),
+            _ => return Err("Expected argument 'min' to be of type 'number'".to_string())
+        };
+        let max = match max {
+            Value::Numeric(n) => n.to_f64(),
+            _ => return Err("Expected argument 'max' to be of type 'number'".to_string())
+        };
+
+        let random = Random::gen_range(min, max);
+
+        Ok(Some(Value::Numeric(NumericValue::Float64(random))))
     };
 
     Function::built_in(name, params, return_type, body)
