@@ -97,7 +97,7 @@ impl PartialEq for NumericValue {
 impl Eq for NumericValue { }
 
 impl NumericValue {
-    fn to_f64(&self) -> f64 {
+    pub fn to_f64(&self) -> f64 {
         match *self {
             NumericValue::IntU8(v) => v as f64,
             NumericValue::IntU16(v) => v as f64,
@@ -111,6 +111,23 @@ impl NumericValue {
 
             NumericValue::Float32(v) => v as f64,
             NumericValue::Float64(v) => v,
+        }
+    }
+
+    pub fn to_i128(&self) -> i128 {
+        match *self {
+            NumericValue::IntU8(v) => v as i128,
+            NumericValue::IntU16(v) => v as i128,
+            NumericValue::IntU32(v) => v as i128,
+            NumericValue::IntU64(v) => v as i128,
+
+            NumericValue::IntI8(v) => v as i128,
+            NumericValue::IntI16(v) => v as i128,
+            NumericValue::IntI32(v) => v as i128,
+            NumericValue::IntI64(v) => v as i128,
+
+            NumericValue::Float32(v) => v as i128,
+            NumericValue::Float64(v) => v as i128,
         }
     }
 }
