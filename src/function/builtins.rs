@@ -19,6 +19,7 @@ impl Database {
             len(),
             random(),
             random_range(),
+            format(),
         ];
 
         for function in functions {
@@ -237,6 +238,67 @@ fn random_range() -> Function {
         let random = Random::gen_range(min, max);
 
         Ok(Some(Value::Numeric(NumericValue::Float64(random))))
+    };
+
+    Function::built_in(name, params, return_type, body)
+}
+
+fn format() -> Function {
+    let name = "format";
+    let params = vec![("template", Type::String), ("values", Type::Array(Box::new(Type::Any)))];
+    let return_type = Type::String;
+
+    let body = |_: Rc<RefCell<Database>>, args: &[Value]| {
+        let template = args.get(0).ok_or("Expected argument 'template'")?;
+        let values = args.get(1).ok_or("Expected argument 'values'")?;
+        
+        let template = match template {
+            Value::Text(s) => s,
+            _ => return Err("Expected argument 'template' to be of type 'text'".to_string())
+        };
+        let values = match values {
+            Value::Array(a) => a,
+            _ => return Err("Expected argument 'values' to be of type 'array'".to_string())
+        };
+
+        let chars = template.chars().collect::<Vec<_>>();
+        let mut result = String::new();
+        let mut value_index = 0;
+
+        let mut i = 0;
+        while i < chars.len() {
+            let c = chars.get(i).unwrap();
+
+            match c {
+                '{' if chars.get(i + 1) == Some(&'}') => {
+                    let value = values.get(value_index).ok_or("Not enough values")?.to_string();
+                    result.push_str(&value);
+                    i += 2;
+                },
+                '{' if chars.get(i + 1) == Some(&':') 
+                    && chars.get(i + 2) == Some(&'?') 
+                    && chars.get(i + 3) == Some(&'}') => {
+                    let value = values.get(value_index).ok_or("Not enough values")?;
+                    let value = format!("{:?}", value);
+                    result.push_str(&value);
+                    i += 4
+                },
+                '{' if chars.get(i + 1) == Some(&':') 
+                    && chars.get(i + 2) == Some(&'#') 
+                    && chars.get(i + 3) == Some(&'?') 
+                    && chars.get(i + 4) == Some(&'}') => {
+                    let value = values.get(value_index).ok_or("Not enough values")?;
+                    let value = format!("{:#?}", value);
+                    result.push_str(&value);
+                    i += 5
+                }
+                _ => { result.push(*c); i += 1; continue; }
+            }
+
+            value_index += 1;
+        }
+
+        Ok(Some(Value::Text(result)))
     };
 
     Function::built_in(name, params, return_type, body)
