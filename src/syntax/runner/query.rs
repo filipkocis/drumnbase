@@ -383,6 +383,40 @@ impl Runner {
     }
 
     fn eval_delete(&self, delete: &DeleteQuery) -> Result<Option<Value>, String> {
-        todo!()
+        let mut database = self.database.borrow_mut();
+        let table = database.get_table_mut(&delete.table).unwrap();
+        let column_map = table.get_column_map(&table.get_column_names()).unwrap();
+
+        // evaluate where clause on each row
+        let mut deleted_rows_count = 0;
+        for index in 0..table.data.len() {
+            let row = table.data.get_mut(index).unwrap();
+            if row.is_deleted() { continue }
+            
+            let mut variables = self.variables.borrow_mut(); 
+            for (name, j) in &column_map {
+                variables.insert(name.to_string(), row.get(*j).unwrap().clone());
+            }
+            drop(variables);
+
+            let where_clause_result = match &delete.where_clause {
+                Some(node) => self.run(node),
+                // None => Ok(Some(Value::Boolean(false)))
+                None => return Err("Delete query must have a where clause".to_string())
+            };
+
+            match where_clause_result {
+                Ok(Some(Value::Boolean(true))) => {
+                    row.mark_deleted();
+                    table.sync_flags(index)?;
+                    deleted_rows_count += 1;
+                },
+                Ok(Some(Value::Boolean(false))) => (),
+                Ok(v) => return Err(format!("Where clause must return a boolean value, got: {:?}", v)),
+                Err(err) => return Err(err)
+            };
+        }
+        
+        Ok(Some(Value::Numeric(NumericValue::IntU64(deleted_rows_count as u64))))
     }
 }
