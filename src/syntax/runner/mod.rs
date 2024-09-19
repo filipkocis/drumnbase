@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, cell::RefCell};
+use std::{collections::HashMap, rc::Rc, cell::RefCell, sync::{Arc, RwLock}};
 
 use crate::{basics::row::Value, database::database::Database};
 
@@ -27,7 +27,7 @@ enum BlockResult {
 }
 
 pub struct Runner {
-    pub database: Rc<RefCell<Database>>,
+    pub database: Arc<RwLock<Database>>,
     pub variables: Rc<RefCell<HashMap<String, Value>>>,
 
     inside_loop: RefCell<bool>,
@@ -36,7 +36,7 @@ pub struct Runner {
 }
 
 impl Runner {
-    pub fn new(database: Rc<RefCell<Database>>) -> Self {
+    pub fn new(database: Arc<RwLock<Database>>) -> Self {
         Self {
             database,
             variables: Rc::new(RefCell::new(HashMap::new())),

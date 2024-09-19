@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{rc::Rc, cell::RefCell, sync::{Arc, RwLock}};
 
 use crate::{database::database::Database, basics::row::Value, syntax::ast::{Node, Type}};
 
@@ -18,7 +18,7 @@ pub enum FunctionBody {
     Custom(Node),
 }
 
-type BuiltIn = fn(Rc<RefCell<Database>>, &[Value]) -> Result<Option<Value>, String>;
+type BuiltIn = fn(Arc<RwLock<Database>>, &[Value]) -> Result<Option<Value>, String>;
 
 impl Function {
     pub fn new(name: String, params: Vec<(String, Type)>, return_type: Type, body: FunctionBody) -> Self {
@@ -48,7 +48,7 @@ impl Function {
         )
     }
 
-    pub fn call(&self, db: Rc<RefCell<Database>>, args: &[Value]) -> Result<Option<Value>, String> {
+    pub fn call(&self, db: Arc<RwLock<Database>>, args: &[Value]) -> Result<Option<Value>, String> {
         match &self.body {
             FunctionBody::BuiltIn(f) => f(db, args),
             // TODO: Implement custom function call

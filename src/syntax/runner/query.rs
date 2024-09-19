@@ -22,7 +22,7 @@ impl Runner {
 
     fn apply_query_scope(&self, query: &Query) -> HashMap<String, Option<Value>> {
         let mut saved_scope = HashMap::new(); 
-        let database = self.database.borrow();
+        let database = self.database.read().unwrap();
         let variables = self.variables.borrow();
 
         let table_name = Self::get_query_table(query);
@@ -48,7 +48,7 @@ impl Runner {
     }
 
     fn eval_select(&self, select: &SelectQuery) -> Result<Option<Value>, String> {
-        let database = self.database.borrow();
+        let database = self.database.read().unwrap();
         let table = database.get_table(&select.table).unwrap();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
 
@@ -238,7 +238,7 @@ impl Runner {
         }
         // TODO: check duplicates
 
-        let mut database = self.database.borrow_mut();
+        let mut database = self.database.write().unwrap();
         let table = database.get_table_mut(&insert.table).unwrap();
         let column_names = insert.key_values.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>();
         
@@ -314,7 +314,7 @@ impl Runner {
         }
         // TODO: check duplicates
 
-        let mut database = self.database.borrow_mut();
+        let mut database = self.database.write().unwrap();
         let table = database.get_table_mut(&update.table).unwrap();
         let column_names = update.key_values.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
@@ -383,7 +383,7 @@ impl Runner {
     }
 
     fn eval_delete(&self, delete: &DeleteQuery) -> Result<Option<Value>, String> {
-        let mut database = self.database.borrow_mut();
+        let mut database = self.database.write().unwrap();
         let table = database.get_table_mut(&delete.table).unwrap();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
 
