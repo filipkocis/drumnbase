@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc, time::{SystemTime, UNIX_EPOCH}, sync::{Arc, RwLock}};
+use std::{time::{SystemTime, UNIX_EPOCH}, sync::{Arc, RwLock}};
 
 use crate::{database::database::Database, syntax::ast::Type, basics::row::{Value, TimestampValue, NumericValue}, random::Random};
 

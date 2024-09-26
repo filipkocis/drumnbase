@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::{syntax::{ast::{Statement, Node}, context::RunnerContextVariable}, basics::row::Value};
 
 use super::{Runner, Ctx};
