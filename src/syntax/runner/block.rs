@@ -1,9 +1,9 @@
-use crate::{basics::row::Value, syntax::{ast::{Node, Statement}, context::RunnerContextScope}};
+use crate::{syntax::{ast::{Node, Statement}, context::RunnerContextScope}};
 
-use super::{Runner, BlockResult, Ctx};
+use super::{Runner, BlockResult, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_pure_block(&self, nodes: &Vec<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_pure_block(&self, nodes: &Vec<Node>, ctx: &Ctx) -> RunnerResult {
         match self.eval_block(nodes, ctx)? {
             BlockResult::Return(value) => Ok(Some(value)),
             BlockResult::Break => {

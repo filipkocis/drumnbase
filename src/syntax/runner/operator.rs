@@ -1,9 +1,9 @@
 use crate::{syntax::ast::{Operator, Node, Literal}, basics::row::{Value, NumericValue}};
 
-use super::{Runner, Ctx};
+use super::{Runner, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_unary(&self, operator: &Operator, right_node: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_unary(&self, operator: &Operator, right_node: &Box<Node>, ctx: &Ctx) -> RunnerResult {
         let right = self.run(right_node, ctx)?.ok_or("Invalid unary statement")?;
 
         match operator {
@@ -48,7 +48,7 @@ impl Runner {
         }
     }
 
-    pub(super) fn eval_binary(&self, left: &Box<Node>, operator: &Operator, right: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_binary(&self, left: &Box<Node>, operator: &Operator, right: &Box<Node>, ctx: &Ctx) -> RunnerResult {
         let left = self.run(left, ctx)?.ok_or("Invalid left-hand side".to_string())?;
         let right = self.run(right, ctx)?.ok_or("Invalid right-hand side".to_string())?;
 

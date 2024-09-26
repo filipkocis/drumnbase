@@ -1,9 +1,9 @@
 use crate::{syntax::{ast::{Node, Statement}, context::RunnerContextScope}, basics::row::Value};
 
-use super::{Runner, BlockResult, Ctx};
+use super::{Runner, BlockResult, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_loop(&self, block: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_loop(&self, block: &Box<Node>, ctx: &Ctx) -> RunnerResult {
         let block_nodes = match **block {
             Node::Block(ref nodes) => nodes,
             _ => return Err("Loop block must be a block".to_string())
@@ -26,7 +26,7 @@ impl Runner {
         Ok(None)
     }
 
-    pub(super) fn eval_for(&self, initializer: &Box<Node>, condition: &Box<Node>, action: &Box<Node>, block: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_for(&self, initializer: &Box<Node>, condition: &Box<Node>, action: &Box<Node>, block: &Box<Node>, ctx: &Ctx) -> RunnerResult {
         match **initializer {
             Node::Statement(Statement::Let { .. }) |
             Node::Statement(Statement::Assignment { .. }) |
@@ -63,7 +63,7 @@ impl Runner {
         Ok(None)
     }
 
-    pub(super) fn eval_while(&self, condition: &Node, block: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_while(&self, condition: &Node, block: &Box<Node>, ctx: &Ctx) -> RunnerResult {
         if !matches!(condition, Node::Expression(_)) {
             return Err("While condition must be an expression".to_string())
         }

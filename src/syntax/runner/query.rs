@@ -1,9 +1,9 @@
 use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::row::{Value, Row, NumericValue}};
 
-use super::{Runner, Ctx};
+use super::{Runner, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_query(&self, query: &Query, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_query(&self, query: &Query, ctx: &Ctx) -> RunnerResult {
         let ctx = &Ctx::scoped(ctx.clone());
 
         let result = match query {
@@ -16,7 +16,7 @@ impl Runner {
         result
     }
 
-    fn eval_select(&self, select: &SelectQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_select(&self, select: &SelectQuery, ctx: &Ctx) -> RunnerResult {
         let database = self.database.read().unwrap();
         let table = database.get_table(&select.table).unwrap();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
@@ -193,7 +193,7 @@ impl Runner {
         Ok(Some(Value::Array(result_set)))
     }
 
-    fn eval_insert(&self, insert: &InsertQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_insert(&self, insert: &InsertQuery, ctx: &Ctx) -> RunnerResult {
         // eval the key_values
         let mut key_values = vec![];
         for (key, value) in &insert.key_values {
@@ -269,7 +269,7 @@ impl Runner {
         Ok(Some(Value::Array(vec![Value::Array(row_values)])))
     }
     
-    fn eval_update(&self, update: &UpdateQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_update(&self, update: &UpdateQuery, ctx: &Ctx) -> RunnerResult {
         // eval the key_values
         let mut key_values = vec![];
         for (key, value) in &update.key_values {
@@ -343,7 +343,7 @@ impl Runner {
         Ok(Some(Value::Numeric(NumericValue::IntU64(updated_rows_count as u64))))
     }
 
-    fn eval_delete(&self, delete: &DeleteQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_delete(&self, delete: &DeleteQuery, ctx: &Ctx) -> RunnerResult {
         let mut database = self.database.write().unwrap();
         let table = database.get_table_mut(&delete.table).unwrap();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();

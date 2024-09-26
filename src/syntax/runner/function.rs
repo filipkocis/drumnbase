@@ -1,9 +1,9 @@
 use crate::{syntax::{ast::{Node, Type}, context::{RunnerContextScope, RunnerContextVariable}}, basics::row::Value, function::{Function, FunctionBody}};
 
-use super::{Runner, Ctx};
+use super::{Runner, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Option<Value>, String> {
+    pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> RunnerResult {
         let function = Function::custom(name, parameters, return_type, block);
 
         let mut database = self.database.write().unwrap();
@@ -16,7 +16,7 @@ impl Runner {
         Ok(None)
     }
 
-    pub(super) fn eval_call(&self, name: &str, arguments: &Vec<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_call(&self, name: &str, arguments: &Vec<Node>, ctx: &Ctx) -> RunnerResult {
         let arguments = arguments.iter()
             .map(|arg| match self.run(arg, ctx) {
                     Ok(value) => match value {
@@ -40,7 +40,7 @@ impl Runner {
         }
     }
 
-    fn execute_function(&self, function: &Function, arguments: Vec<Value>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn execute_function(&self, function: &Function, arguments: Vec<Value>, ctx: &Ctx) -> RunnerResult {
         // TODO: add type checking for builtins
         let body = match &function.body {
             FunctionBody::Custom(body) => body,

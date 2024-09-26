@@ -1,9 +1,9 @@
 use crate::{syntax::{ast::{Expression, Node}, context::RunnerContextVariable}, basics::row::{Value, NumericValue}};
 
-use super::{Runner, Ctx};
+use super::{Runner, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_expression(&self, expression: &Expression, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_expression(&self, expression: &Expression, ctx: &Ctx) -> RunnerResult {
         match expression {
             Expression::Binary { left, operator, right }
                 => self.eval_binary(left, operator, right, ctx), 
@@ -16,7 +16,7 @@ impl Runner {
         }
     }
 
-    fn eval_index(&self, name: &str, index: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_index(&self, name: &str, index: &Box<Node>, ctx: &Ctx) -> RunnerResult {
         let index = self.run(index, ctx)?.ok_or("Index cannot be a statement with no return value")?;
 
         if let Value::Array(array) = ctx.get(name)?.borrow().as_ref() {

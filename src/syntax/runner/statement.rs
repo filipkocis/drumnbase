@@ -1,9 +1,9 @@
 use crate::{syntax::{ast::{Statement, Node}, context::RunnerContextVariable}, basics::row::Value};
 
-use super::{Runner, Ctx};
+use super::{Runner, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_statement(&self, statement: &Statement, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_statement(&self, statement: &Statement, ctx: &Ctx) -> RunnerResult {
         match statement {
             Statement::Assignment { name, value } => self.eval_assignment(name, value, ctx),
             Statement::Expression(_) => unimplemented!("statement expression"),
@@ -23,7 +23,7 @@ impl Runner {
         }
     }
 
-    fn eval_if(&self, condition: &Node, then_block: &Box<Node>, else_block: &Option<Box<Node>>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_if(&self, condition: &Node, then_block: &Box<Node>, else_block: &Option<Box<Node>>, ctx: &Ctx) -> RunnerResult {
         if !matches!(condition, Node::Expression(_)) {
             return Err("If condition must be an expression".to_string())
         }
@@ -45,13 +45,13 @@ impl Runner {
         }
     }
 
-    fn eval_declaration(&self, name: &str, value: &Node, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_declaration(&self, name: &str, value: &Node, ctx: &Ctx) -> RunnerResult {
         let value = self.run(value, ctx)?.ok_or("Cannot declare a statement without a return value")?;
         ctx.declare(name, value);
         Ok(None)
     }
 
-    pub(super) fn eval_assignment(&self, name: &str, value: &Node, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_assignment(&self, name: &str, value: &Node, ctx: &Ctx) -> RunnerResult {
         let value = self.run(value, ctx)?.ok_or("Cannot assign a statement without a return value")?;
         ctx.assign(name, value)?;
         Ok(None)

@@ -15,6 +15,8 @@ mod function;
 mod r#type;
 mod query;
 
+type RunnerResult = Result<Option<Value>, String>;
+
 enum BlockResult {
     /// Either a return statement or the last auto-returned value
     Return(Value),
@@ -45,7 +47,7 @@ impl Runner {
         }
     }
 
-    pub fn run(&self, ast: &Node, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub fn run(&self, ast: &Node, ctx: &Ctx) -> RunnerResult {
         match ast {
             Node::Literal(value) => self.eval_literal(value, ctx),
             Node::Block(nodes) => self.eval_pure_block(nodes, ctx),

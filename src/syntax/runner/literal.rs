@@ -1,9 +1,9 @@
 use crate::{syntax::{ast::{Literal, Number, Node}, context::RunnerContextVariable}, basics::row::{Value, NumericValue}};
 
-use super::{Runner, Ctx};
+use super::{Runner, Ctx, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_literal(&self, literal: &Literal, ctx: &Ctx) -> Result<Option<Value>, String> {
+    pub(super) fn eval_literal(&self, literal: &Literal, ctx: &Ctx) -> RunnerResult {
         match literal {
             Literal::Identifier(name) => self.eval_identifier(name, ctx),
             Literal::Number(number) => self.eval_number(number),
@@ -14,7 +14,7 @@ impl Runner {
         }
     }
 
-    fn eval_identifier(&self, name: &str, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_identifier(&self, name: &str, ctx: &Ctx) -> RunnerResult {
         // TODO: find a way to return a reference without cloning
         let value = ctx.get(name)?;
         let value = value.borrow().clone().into_owned();
@@ -22,7 +22,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    fn eval_number(&self, number: &Number) -> Result<Option<Value>, String> {
+    fn eval_number(&self, number: &Number) -> RunnerResult {
         let numeric = match number {
             Number::Int(value) => NumericValue::IntI64(*value),
             Number::UInt(value) => NumericValue::IntU64(*value),
@@ -32,7 +32,7 @@ impl Runner {
         Ok(Some(Value::Numeric(numeric)))
     }
 
-    fn eval_array(&self, values: &Vec<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+    fn eval_array(&self, values: &Vec<Node>, ctx: &Ctx) -> RunnerResult {
         let mut result = Vec::new();
         for value in values {
             let value = self.run(&value, ctx)?;

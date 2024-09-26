@@ -1,9 +1,9 @@
 use crate::basics::row::{Value, NumericValue};
 
-use super::Runner;
+use super::{Runner, RunnerResult};
 
 impl Runner {
-    pub(super) fn eval_add(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_add(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Value::Numeric(NumericValue::IntI64(left + right)),
@@ -36,7 +36,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    pub(super) fn eval_sub(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_sub(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Value::Numeric(NumericValue::IntI64(left - right)),
@@ -63,7 +63,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    pub(super) fn eval_mul(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_mul(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Value::Numeric(NumericValue::IntI64(left * right)),
@@ -89,7 +89,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    pub(super) fn eval_div(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_div(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Value::Numeric(NumericValue::IntI64(left / right)),
@@ -115,7 +115,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    pub(super) fn eval_mod(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_mod(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Value::Numeric(NumericValue::IntI64(left % right)),
@@ -141,7 +141,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    pub(super) fn eval_pow(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_pow(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Numeric(left), Value::Numeric(right)) => match (left, right) {
                 (NumericValue::IntI64(left), NumericValue::IntI64(right)) => Value::Numeric(NumericValue::IntI64((*left as f64).powf(*right as f64) as i64)),
@@ -167,7 +167,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    pub(super) fn eval_and(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_and(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Boolean(left), Value::Boolean(right)) => Value::Boolean(*left && *right),
             (Value::Null, _) => Value::Null,
@@ -179,7 +179,7 @@ impl Runner {
         Ok(Some(value))
     }
 
-    pub(super) fn eval_or(&self, left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    pub(super) fn eval_or(&self, left: &Value, right: &Value) -> RunnerResult {
         let value = match (left, right) {
             (Value::Boolean(left), Value::Boolean(right)) => Value::Boolean(*left || *right),
             (Value::Null, _) => Value::Null,
