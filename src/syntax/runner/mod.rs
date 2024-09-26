@@ -1,8 +1,8 @@
-use std::{collections::HashMap, rc::Rc, cell::RefCell, sync::{Arc, RwLock}};
+use std::{cell::RefCell, sync::{Arc, RwLock}};
 
 use crate::{basics::row::Value, database::database::Database};
 
-use super::ast::{Node};
+use super::{ast::{Node}, context::Ctx};
 
 mod block;
 mod literal;
@@ -28,8 +28,7 @@ enum BlockResult {
 
 pub struct Runner {
     pub database: Arc<RwLock<Database>>,
-    pub variables: Rc<RefCell<HashMap<String, Value>>>,
-
+    // pub variables: Rc<RefCell<HashMap<String, Value>>>,
     inside_loop: RefCell<bool>,
     break_loop: RefCell<bool>,
     continue_loop: RefCell<bool>,
@@ -39,32 +38,21 @@ impl Runner {
     pub fn new(database: Arc<RwLock<Database>>) -> Self {
         Self {
             database,
-            variables: Rc::new(RefCell::new(HashMap::new())),
-
+            // variables: Rc::new(RefCell::new(HashMap::new())),
             inside_loop: RefCell::new(false),
             break_loop: RefCell::new(false),
             continue_loop: RefCell::new(false),
         }
     }
 
-    pub fn run(&self, ast: &Node) -> Result<Option<Value>, String> {
+    pub fn run(&self, ast: &Node, ctx: &Ctx) -> Result<Option<Value>, String> {
         match ast {
-            Node::Literal(value) => self.eval_literal(value),
-            Node::Block(nodes) => self.eval_pure_block(nodes),
-            Node::Statement(statement) => self.eval_statement(statement),
-            Node::Expression(expression) => self.eval_expression(expression),
-            Node::Query(query) => self.eval_query(query),
+            Node::Literal(value) => self.eval_literal(value, ctx),
+            Node::Block(nodes) => self.eval_pure_block(nodes, ctx),
+            Node::Statement(statement) => self.eval_statement(statement, ctx),
+            Node::Expression(expression) => self.eval_expression(expression, ctx),
+            Node::Query(query) => self.eval_query(query, ctx),
             Node::Value(value) => Ok(Some(value.clone()))
-        }
-    }
-
-    fn reset_scope(&self, saved_scope: HashMap<String, Option<Value>>) {
-        let mut variables = self.variables.borrow_mut();
-        for (name, value) in saved_scope {
-            match value {
-                Some(value) => variables.insert(name, value),
-                None => variables.remove(&name)
-            };
         }
     }
 }

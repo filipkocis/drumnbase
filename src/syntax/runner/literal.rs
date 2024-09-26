@@ -1,25 +1,25 @@
-use crate::{syntax::ast::{Literal, Number, Node}, basics::row::{Value, NumericValue}};
+use crate::{syntax::{ast::{Literal, Number, Node}, context::RunnerContextVariable}, basics::row::{Value, NumericValue}};
 
-use super::Runner;
+use super::{Runner, Ctx};
 
 impl Runner {
-    pub(super) fn eval_literal(&self, literal: &Literal) -> Result<Option<Value>, String> {
+    pub(super) fn eval_literal(&self, literal: &Literal, ctx: &Ctx) -> Result<Option<Value>, String> {
         match literal {
-            Literal::Identifier(name) => self.eval_identifier(name),
+            Literal::Identifier(name) => self.eval_identifier(name, ctx),
             Literal::Number(number) => self.eval_number(number),
             Literal::String(value) => Ok(Some(Value::Text(value.clone()))),
             Literal::Boolean(value) => Ok(Some(Value::Boolean(*value))),
-            Literal::Array(values) => self.eval_array(values),
+            Literal::Array(values) => self.eval_array(values, ctx),
             Literal::Null => Ok(Some(Value::Null))
         }
     }
 
-    fn eval_identifier(&self, name: &str) -> Result<Option<Value>, String> {
-        if let Some(value) = self.variables.borrow().get(name) {
-            Ok(Some(value.clone()))
-        } else {
-            Err(format!("Variable '{}' not found", name))
-        }
+    fn eval_identifier(&self, name: &str, ctx: &Ctx) -> Result<Option<Value>, String> {
+        // TODO: find a way to return a reference without cloning
+        let value = ctx.get(name)?;
+        let value = value.borrow().clone().into_owned();
+        
+        Ok(Some(value))
     }
 
     fn eval_number(&self, number: &Number) -> Result<Option<Value>, String> {
@@ -32,10 +32,10 @@ impl Runner {
         Ok(Some(Value::Numeric(numeric)))
     }
 
-    fn eval_array(&self, values: &Vec<Node>) -> Result<Option<Value>, String> {
+    fn eval_array(&self, values: &Vec<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
         let mut result = Vec::new();
         for value in values {
-            let value = self.run(&value)?;
+            let value = self.run(&value, ctx)?;
             match value {
                 Some(value) => result.push(value),
                 None => Err(format!("Invalid array element: {:?}", value))?

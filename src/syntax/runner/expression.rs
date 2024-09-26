@@ -1,28 +1,31 @@
-use crate::{syntax::ast::{Expression, Node}, basics::row::{Value, NumericValue}};
+use crate::{syntax::{ast::{Expression, Node}, context::RunnerContextVariable}, basics::row::{Value, NumericValue}};
 
-use super::Runner;
+use super::{Runner, Ctx};
 
 impl Runner {
-    pub(super) fn eval_expression(&self, expression: &Expression) -> Result<Option<Value>, String> {
+    pub(super) fn eval_expression(&self, expression: &Expression, ctx: &Ctx) -> Result<Option<Value>, String> {
         match expression {
             Expression::Binary { left, operator, right }
-                => self.eval_binary(left, operator, right), 
-            Expression::Unary { operator, right } => self.eval_unary(operator, right),
-            Expression::Call { name, arguments } => self.eval_call(name, arguments),
-            Expression::Literal(value) => self.eval_literal(value),
-            Expression::Index { name, index } => self.eval_index(name, index),
+                => self.eval_binary(left, operator, right, ctx), 
+            Expression::Unary { operator, right } => self.eval_unary(operator, right, ctx),
+            Expression::Call { name, arguments } => self.eval_call(name, arguments, ctx),
+            Expression::Literal(value) => self.eval_literal(value, ctx),
+            Expression::Index { name, index } => self.eval_index(name, index, ctx),
 
             _ => unimplemented!("expression")
         }
     }
 
-    fn eval_index(&self, name: &str, index: &Box<Node>) -> Result<Option<Value>, String> {
-        let index = self.run(index)?;
-        let variables = self.variables.borrow();
-        if let Some(Value::Array(array)) = variables.get(name) {
-            if let Value::Numeric(NumericValue::IntU64(index)) = index.ok_or("Index cannot be a statement")? {
-                if let Some(value) = array.get(index as usize) {
-                    return Ok(Some(value.clone()))
+    fn eval_index(&self, name: &str, index: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+        let index = self.run(index, ctx)?.ok_or("Index cannot be a statement with no return value")?;
+
+        if let Value::Array(array) = ctx.get(name)?.borrow().as_ref() {
+            // TODO: Implement index number validation
+            if let Value::Numeric(NumericValue::IntU64(index)) = index {
+                return match array.get(index as usize) {
+                    // TODO: Implement way to skip cloning when needing a reference
+                    Some(value) => Ok(Some(value.clone())),
+                    None => Err(format!("Index '{}' out of bounds", index))
                 }
             }
         }

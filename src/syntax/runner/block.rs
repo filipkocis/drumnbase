@@ -1,12 +1,10 @@
-use std::collections::HashMap;
+use crate::{basics::row::Value, syntax::{ast::{Node, Statement}, context::RunnerContextScope}};
 
-use crate::{basics::row::Value, syntax::ast::{Node, Statement}};
-
-use super::{Runner, BlockResult};
+use super::{Runner, BlockResult, Ctx};
 
 impl Runner {
-    pub(super) fn eval_pure_block(&self, nodes: &Vec<Node>) -> Result<Option<Value>, String> {
-        match self.eval_block(nodes)? {
+    pub(super) fn eval_pure_block(&self, nodes: &Vec<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+        match self.eval_block(nodes, ctx)? {
             BlockResult::Return(value) => Ok(Some(value)),
             BlockResult::Break => {
                 if *self.inside_loop.borrow() {
@@ -26,19 +24,18 @@ impl Runner {
         }
     }
 
-    pub(super) fn eval_block(&self, nodes: &Vec<Node>) -> Result<BlockResult, String> {
+    pub(super) fn eval_block(&self, nodes: &Vec<Node>, ctx: &Ctx) -> Result<BlockResult, String> {
         let len = nodes.len() - 1;
-        let mut saved_scope = HashMap::new();
+        let ctx = &Ctx::scoped(ctx.clone());
 
         for (i, node) in nodes.iter().enumerate() {
             if let Node::Statement(statement) = node {
                 match statement {
                     Statement::Return(value) => {
-                        let value = match self.run(value) {
+                        let value = match self.run(value, ctx) {
                             Ok(value) => value,
-                            Err(e) => { self.reset_scope(saved_scope); return Err(e) }
+                            Err(e) => return Err(e)
                         };
-                        self.reset_scope(saved_scope);
                         match value {
                             Some(value) => return Ok(BlockResult::Return(value)),
                             None => return Err("Cannot return a statement without a value".to_string())
@@ -49,7 +46,6 @@ impl Runner {
                             Err("Break outside of loop".to_string())?
                         }
                         self.break_loop.replace(true);
-                        self.reset_scope(saved_scope);
                         return Ok(BlockResult::Break);
                     },
                     Statement::Continue => {
@@ -57,34 +53,21 @@ impl Runner {
                             Err("Continue outside of loop".to_string())?
                         }
                         self.continue_loop.replace(true);
-                        self.reset_scope(saved_scope);
                         return Ok(BlockResult::Continue);
                     },
-                    Statement::Let { name, .. } => {
-                        let scope = self.variables.borrow();
-                        let saved_value = scope.get(name);
-                        saved_scope.insert(name.clone(), saved_value.cloned()); 
-                    }
                     _ => {}
                 }
             }
 
-            let value = match self.run(node) {
+            let value = match self.run(node, ctx) {
                 Ok(value) => value,
-                Err(e) => { self.reset_scope(saved_scope); return Err(e) }
+                Err(e) => return Err(e)
             };
 
-            if *self.break_loop.borrow(){ 
-                self.reset_scope(saved_scope); 
-                return Ok(BlockResult::Break); 
-            }
-            if *self.continue_loop.borrow() { 
-                self.reset_scope(saved_scope); 
-                return Ok(BlockResult::Continue); 
-            }
+            if *self.break_loop.borrow() { return Ok(BlockResult::Break); }
+            if *self.continue_loop.borrow() { return Ok(BlockResult::Continue); }
 
             if i == len {
-                self.reset_scope(saved_scope); 
                 match value {
                     Some(value) => return Ok(BlockResult::Return(value)),
                     None => return Ok(BlockResult::End)
@@ -93,13 +76,11 @@ impl Runner {
 
             if matches!(node, Node::Statement(_)) {
                 if let Some(value) = value {
-                    self.reset_scope(saved_scope); 
                     return Ok(BlockResult::Return(value))
                 }
             }
         }
 
-        self.reset_scope(saved_scope); 
         Ok(BlockResult::End)
     }
 }

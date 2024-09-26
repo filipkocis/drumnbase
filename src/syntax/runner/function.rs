@@ -1,8 +1,6 @@
-use std::collections::HashMap;
+use crate::{syntax::{ast::{Node, Type}, context::{RunnerContextScope, RunnerContextVariable}}, basics::row::Value, function::{Function, FunctionBody}};
 
-use crate::{syntax::ast::{Node, Type}, basics::row::Value, function::{Function, FunctionBody}};
-
-use super::Runner;
+use super::{Runner, Ctx};
 
 impl Runner {
     pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> Result<Option<Value>, String> {
@@ -18,9 +16,9 @@ impl Runner {
         Ok(None)
     }
 
-    pub(super) fn eval_call(&self, name: &str, arguments: &Vec<Node>) -> Result<Option<Value>, String> {
+    pub(super) fn eval_call(&self, name: &str, arguments: &Vec<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
         let arguments = arguments.iter()
-            .map(|arg| match self.run(arg) {
+            .map(|arg| match self.run(arg, ctx) {
                     Ok(value) => match value {
                         Some(value) => Ok(value),
                         None => Err("Cannot pass a statement without a return value as an argument".to_string())
@@ -36,20 +34,21 @@ impl Runner {
                 return Err(format!("Function '{}' expects {} arguments, got {}", name, function.params.len(), arguments.len()));
             }
 
-            self.execute_function(function, arguments)
+            self.execute_function(function, arguments, ctx)
         } else {
             Err(format!("Function '{}' not found", name))
         }
     }
 
-    fn execute_function(&self, function: &Function, arguments: Vec<Value>) -> Result<Option<Value>, String> {
+    fn execute_function(&self, function: &Function, arguments: Vec<Value>, ctx: &Ctx) -> Result<Option<Value>, String> {
+        // TODO: add type checking for builtins
         let body = match &function.body {
             FunctionBody::Custom(body) => body,
             FunctionBody::BuiltIn(function) => return function(self.database.clone(), &arguments),
         };
 
-        let mut variables = self.variables.borrow_mut();
-        let mut previous = HashMap::new();
+        // TODO: create a new context so the fn doesn't have access to the outer scope (?)
+        let ctx = &Ctx::scoped(ctx.clone());
         for ((param_name, param_type), value) in function.params.iter().zip(arguments) {
             if !self.check_type(param_type, &value) {
                 return Err(format!("Function '{}' expects argument '{}' to be of type '{:?}' but got '{:?}'",
@@ -57,22 +56,9 @@ impl Runner {
                 ));
             }
 
-            let key = variables.insert(param_name.to_string(), value);
-            previous.insert(param_name.to_string(), key);
+            ctx.declare(param_name, value);
         }
 
-        drop(variables); // drop mutable borrow before recursive call
-        let result = self.run(&body);
-        
-        let mut variables = self.variables.borrow_mut();
-        for (param_name, key) in previous {
-            if let Some(value) = key {
-                variables.insert(param_name, value);
-            } else {
-                variables.remove(&param_name);
-            }
-        }
-
-        result
+        self.run(&body, ctx)
     }
 }

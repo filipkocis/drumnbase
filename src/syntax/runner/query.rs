@@ -1,56 +1,26 @@
-use std::collections::HashMap;
+use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::row::{Value, Row, NumericValue}};
 
-use crate::{syntax::ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, basics::row::{Value, Row, NumericValue}};
-
-use super::Runner;
+use super::{Runner, Ctx};
 
 impl Runner {
-    pub(super) fn eval_query(&self, query: &Query) -> Result<Option<Value>, String> {
-        let saved_scope = self.apply_query_scope(query);
+    pub(super) fn eval_query(&self, query: &Query, ctx: &Ctx) -> Result<Option<Value>, String> {
+        let ctx = &Ctx::scoped(ctx.clone());
 
         let result = match query {
-            Query::Select(select) => self.eval_select(select),
-            Query::Insert(insert) => self.eval_insert(insert),
-            Query::Update(update) => self.eval_update(update),
-            Query::Delete(delete) => self.eval_delete(delete),
-            _ => Err(format!("Unsupported query type {:?}", query)),        
+            Query::Select(select) => self.eval_select(select, ctx),
+            Query::Insert(insert) => self.eval_insert(insert, ctx),
+            Query::Update(update) => self.eval_update(update, ctx),
+            Query::Delete(delete) => self.eval_delete(delete, ctx),
         };
 
-        self.reset_scope(saved_scope);
         result
     }
 
-    fn apply_query_scope(&self, query: &Query) -> HashMap<String, Option<Value>> {
-        let mut saved_scope = HashMap::new(); 
-        let database = self.database.read().unwrap();
-        let variables = self.variables.borrow();
-
-        let table_name = Self::get_query_table(query);
-        let table = database.get_table(table_name).unwrap();
-        
-        for column in &table.columns {
-            saved_scope.insert(
-                column.name.clone(), 
-                variables.get(&column.name).cloned()
-            );
-        }
-
-        saved_scope
-    }
-
-    fn get_query_table(query: &Query) -> &str {
-        match query {
-            Query::Select(q) => &q.table,
-            Query::Insert(q) => &q.table,
-            Query::Update(q) => &q.table,
-            Query::Delete(q) => &q.table,
-        }
-    }
-
-    fn eval_select(&self, select: &SelectQuery) -> Result<Option<Value>, String> {
+    fn eval_select(&self, select: &SelectQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
         let database = self.database.read().unwrap();
         let table = database.get_table(&select.table).unwrap();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
+        let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
 
         // (i, col) -> i is the index of the col in the result set, col is the value
         let mut special_columns = vec![];
@@ -126,15 +96,11 @@ impl Runner {
         let mut row_indexes = vec![];
         for (i, row) in table.data.iter().enumerate() {
             if row.is_deleted() { continue }
-            
-            let mut variables = self.variables.borrow_mut(); 
-            for (name, j) in &column_map {
-                variables.insert(name.to_string(), row.get(*j).unwrap().clone());
-            }
-            drop(variables);
+
+            ctx.set_row(row);
 
             let where_clause_result = match &select.where_clause {
-                Some(node) => self.run(node),
+                Some(node) => self.run(node, ctx),
                 None => Ok(Some(Value::Boolean(true)))
             };
 
@@ -199,10 +165,11 @@ impl Runner {
         }
 
         // build result set
-        let mut result_set = vec![];
+        let result_row_capacity = column_names.len() + special_columns.len();
+        let mut result_set = Vec::with_capacity(row_indexes.len());
         for row_index in row_indexes {
             let row = table.data.get(row_index).expect("Cannot get row with row_index");
-            let mut result_row = vec![];
+            let mut result_row = Vec::with_capacity(result_row_capacity);
 
             // evaluate columns
             for (i, _) in &column_names {
@@ -211,15 +178,12 @@ impl Runner {
 
             // set row variables to be used in special columns
             if special_columns.len() > 0 {
-                let mut variables = self.variables.borrow_mut(); 
-                for (name, i) in &column_map {
-                    variables.insert(name.to_string(), row.get(*i).unwrap().clone());
-                }
+                ctx.set_row(row);
             }
 
             // evaluate special columns
             for (i, node) in &special_columns {
-                let value = self.run(node)?.expect("Special column must return a value");
+                let value = self.run(node, &ctx)?.expect("Special column must return a value");
                 result_row.insert(*i, value)
             }
 
@@ -229,11 +193,11 @@ impl Runner {
         Ok(Some(Value::Array(result_set)))
     }
 
-    fn eval_insert(&self, insert: &InsertQuery) -> Result<Option<Value>, String> {
+    fn eval_insert(&self, insert: &InsertQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
         // eval the key_values
         let mut key_values = vec![];
         for (key, value) in &insert.key_values {
-            let value = self.run(value)?.expect(&format!("Value for column '{}' was not evaluated", key));
+            let value = self.run(value, ctx)?.expect(&format!("Value for column '{}' was not evaluated", key));
             key_values.push((key, value));
         }
         // TODO: check duplicates
@@ -305,11 +269,11 @@ impl Runner {
         Ok(Some(Value::Array(vec![Value::Array(row_values)])))
     }
     
-    fn eval_update(&self, update: &UpdateQuery) -> Result<Option<Value>, String> {
+    fn eval_update(&self, update: &UpdateQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
         // eval the key_values
         let mut key_values = vec![];
         for (key, value) in &update.key_values {
-            let value = self.run(value)?.expect(&format!("Value for column '{}' was not evaluated", key));
+            let value = self.run(value, ctx)?.expect(&format!("Value for column '{}' was not evaluated", key));
             key_values.push((key, value));
         }
         // TODO: check duplicates
@@ -318,6 +282,7 @@ impl Runner {
         let table = database.get_table_mut(&update.table).unwrap();
         let column_names = update.key_values.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
+        let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
 
         // check if columns exist in the table
         // table.check_columns_exist(&column_names)?;
@@ -355,14 +320,10 @@ impl Runner {
             let row = table.data.get_mut(index).unwrap();
             if row.is_deleted() { continue }
             
-            let mut variables = self.variables.borrow_mut(); 
-            for (name, j) in &column_map {
-                variables.insert(name.to_string(), row.get(*j).unwrap().clone());
-            }
-            drop(variables);
+            ctx.set_row(row);
 
             let where_clause_result = match &update.where_clause {
-                Some(node) => self.run(node),
+                Some(node) => self.run(node, ctx),
                 // None => Ok(Some(Value::Boolean(true)))
                 None => return Err("Update query must have a where clause".to_string())
             };
@@ -382,10 +343,11 @@ impl Runner {
         Ok(Some(Value::Numeric(NumericValue::IntU64(updated_rows_count as u64))))
     }
 
-    fn eval_delete(&self, delete: &DeleteQuery) -> Result<Option<Value>, String> {
+    fn eval_delete(&self, delete: &DeleteQuery, ctx: &Ctx) -> Result<Option<Value>, String> {
         let mut database = self.database.write().unwrap();
         let table = database.get_table_mut(&delete.table).unwrap();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
+        let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
 
         // evaluate where clause on each row
         let mut deleted_rows_count = 0;
@@ -393,14 +355,10 @@ impl Runner {
             let row = table.data.get_mut(index).unwrap();
             if row.is_deleted() { continue }
             
-            let mut variables = self.variables.borrow_mut(); 
-            for (name, j) in &column_map {
-                variables.insert(name.to_string(), row.get(*j).unwrap().clone());
-            }
-            drop(variables);
+            ctx.set_row(row); 
 
             let where_clause_result = match &delete.where_clause {
-                Some(node) => self.run(node),
+                Some(node) => self.run(node, ctx),
                 // None => Ok(Some(Value::Boolean(false)))
                 None => return Err("Delete query must have a where clause".to_string())
             };

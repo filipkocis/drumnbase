@@ -1,10 +1,10 @@
 use crate::{syntax::ast::{Operator, Node, Literal}, basics::row::{Value, NumericValue}};
 
-use super::Runner;
+use super::{Runner, Ctx};
 
 impl Runner {
-    pub(super) fn eval_unary(&self, operator: &Operator, right_node: &Box<Node>) -> Result<Option<Value>, String> {
-        let right = self.run(right_node)?.ok_or("Invalid unary statement")?;
+    pub(super) fn eval_unary(&self, operator: &Operator, right_node: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+        let right = self.run(right_node, ctx)?.ok_or("Invalid unary statement")?;
 
         match operator {
             Operator::Not => match right {
@@ -24,14 +24,14 @@ impl Runner {
             Operator::Inc => match (&right, &**right_node) {
                 (Value::Numeric(_), Node::Literal(Literal::Identifier(ref identifier))) => {
                     let value = self.eval_add(&right, &Value::Numeric(NumericValue::IntU64(1)))?.ok_or("eval_add returned None")?;
-                    return self.eval_assignment(identifier, &Node::Value(value))
+                    return self.eval_assignment(identifier, &Node::Value(value), ctx)
                 },
                 _ => Err("Invalid unary inc left-hand side".to_string())
             },
             Operator::Dec => match (&right, &**right_node) {
                 (Value::Numeric(_), Node::Literal(Literal::Identifier(ref identifier))) => {
                     let value = self.eval_sub(&right, &Value::Numeric(NumericValue::IntU64(1)))?.ok_or("eval_sub returned None")?;
-                    return self.eval_assignment(identifier, &Node::Value(value))
+                    return self.eval_assignment(identifier, &Node::Value(value), ctx)
                 },
                 _ => Err("Invalid unary dec left-hand side".to_string())
             },
@@ -48,9 +48,9 @@ impl Runner {
         }
     }
 
-    pub(super) fn eval_binary(&self, left: &Box<Node>, operator: &Operator, right: &Box<Node>) -> Result<Option<Value>, String> {
-        let left = self.run(left)?.ok_or("Invalid left-hand side".to_string())?;
-        let right = self.run(right)?.ok_or("Invalid right-hand side".to_string())?;
+    pub(super) fn eval_binary(&self, left: &Box<Node>, operator: &Operator, right: &Box<Node>, ctx: &Ctx) -> Result<Option<Value>, String> {
+        let left = self.run(left, ctx)?.ok_or("Invalid left-hand side".to_string())?;
+        let right = self.run(right, ctx)?.ok_or("Invalid right-hand side".to_string())?;
 
         match operator {
             Operator::Add => self.eval_add(&left, &right),
@@ -73,5 +73,4 @@ impl Runner {
             _ => Err("Invalid binary operator".to_string())
         }
     }
-
 }
