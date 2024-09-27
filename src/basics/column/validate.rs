@@ -1,6 +1,6 @@
 use super::{Column, ColumnType};
 
-use crate::basics::row::Value;
+use crate::basics::Value;
 
 impl Column {
     /// Validates and parses a string value into Value 

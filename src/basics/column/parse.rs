@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::basics::row::{Value, NumericValue, TimestampValue};
+use crate::basics::{Value, value::{NumericValue, TimestampValue}};
 
 use super::{NumericType, TimestampType, ColumnType, TextType};
 

@@ -1,4 +1,4 @@
-use crate::{syntax::ast::{Operator, Node, Literal}, basics::row::{Value, NumericValue}};
+use crate::{syntax::ast::{Operator, Node, Literal}, basics::{Value, value::NumericValue}};
 
 use super::{Runner, Ctx, RunnerResult};
 

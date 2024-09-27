@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell, collections::HashMap, borrow::Cow};
 
-use crate::basics::row::{Value, Row};
+use crate::basics::{Row, Value};
 
 pub type Ctx<'a> = Rc<RunnerContext<'a>>;
 type Scope<'a> = Rc<RefCell<HashMap<String, ScopeValue<'a>>>>;

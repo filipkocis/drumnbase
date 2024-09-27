@@ -1,4 +1,4 @@
-use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::row::{Value, Row, NumericValue}};
+use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::{Value, Row, value::NumericValue}};
 
 use super::{Runner, Ctx, RunnerResult};
 

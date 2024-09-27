@@ -1,4 +1,4 @@
-use crate::basics::{table::Table, row::ToBytes};
+use crate::basics::{Table, value::ToBytes};
 
 impl Table {
     /// Returns the number of bytes prefixing each row (metadata, flags, etc.)

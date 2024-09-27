@@ -1,4 +1,4 @@
-use crate::{syntax::{ast::{Expression, Node}, context::RunnerContextVariable}, basics::row::{Value, NumericValue}};
+use crate::{syntax::{ast::{Expression, Node}, context::RunnerContextVariable}, basics::{Value, value::NumericValue}};
 
 use super::{Runner, Ctx, RunnerResult};
 

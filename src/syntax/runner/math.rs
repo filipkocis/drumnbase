@@ -1,4 +1,4 @@
-use crate::basics::row::{Value, NumericValue};
+use crate::basics::{Value, value::NumericValue};
 
 use super::{Runner, RunnerResult};
 

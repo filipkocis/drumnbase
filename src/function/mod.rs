@@ -1,6 +1,6 @@
 use std::{sync::{Arc, RwLock}};
 
-use crate::{database::Database, basics::row::Value, syntax::ast::{Node, Type}};
+use crate::{database::Database, basics::Value, syntax::ast::{Node, Type}};
 
 mod builtins;
 

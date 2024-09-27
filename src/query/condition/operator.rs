@@ -1,4 +1,4 @@
-use crate::basics::row::Value;
+use crate::basics::Value;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ConditionOperator {
