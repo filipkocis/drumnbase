@@ -49,8 +49,14 @@ impl Runner {
     }
 
     pub(super) fn eval_binary(&self, left: &Box<Node>, operator: &Operator, right: &Box<Node>, ctx: &Ctx) -> RunnerResult {
-        let left = self.run(left, ctx)?.ok_or("Invalid left-hand side".to_string())?;
-        let right = self.run(right, ctx)?.ok_or("Invalid right-hand side".to_string())?;
+        let left = match self.run(left, ctx)? {
+            Some(value) => value,
+            None => return Err("Invalid left-hand side".to_string()),
+        };
+        let right = match self.run(right, ctx)? {
+            Some(value) => value,
+            None => return Err("Invalid right-hand side".to_string()),
+        };
 
         match operator {
             Operator::Add => self.eval_add(&left, &right),
