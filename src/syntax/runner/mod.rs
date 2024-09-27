@@ -1,6 +1,6 @@
 use std::{cell::RefCell, sync::{Arc, RwLock}};
 
-use crate::{basics::row::Value, database::database::Database};
+use crate::{basics::row::Value, database::Database};
 
 use super::{ast::{Node}, context::Ctx};
 

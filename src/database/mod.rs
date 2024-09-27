@@ -1,5 +1,6 @@
-pub mod database;
-pub mod new;
-pub mod builder;
+mod database;
+mod new;
+mod builder;
 
-use database::Database;
+pub use database::Database;
+pub use builder::DatabaseBuilder;

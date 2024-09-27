@@ -1,6 +1,6 @@
 use std::{time::{SystemTime, UNIX_EPOCH}, sync::{Arc, RwLock}};
 
-use crate::{database::database::Database, syntax::ast::Type, basics::row::{Value, TimestampValue, NumericValue}, random::Random};
+use crate::{database::Database, syntax::ast::Type, basics::row::{Value, TimestampValue, NumericValue}, random::Random};
 
 use super::Function;
 

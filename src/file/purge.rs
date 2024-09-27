@@ -1,4 +1,4 @@
-use crate::{database::database::Database, basics::table::Table};
+use crate::{database::Database, basics::table::Table};
 
 use super::data::LoadMode;
 
