@@ -238,6 +238,7 @@ impl Parser {
         self.tokens.get(self.current)
     }
 
+    #[allow(dead_code)]
     fn next(&self) -> Option<&Token> {
         self.tokens.get(self.current + 1)
     }
