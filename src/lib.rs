@@ -7,3 +7,5 @@ pub mod query;
 pub mod function;
 pub mod syntax;
 pub mod random;
+pub mod cluster;
+pub mod auth;
