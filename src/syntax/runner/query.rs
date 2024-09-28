@@ -231,31 +231,20 @@ impl Runner {
         let mut row = Row::new();
         for (i, column) in table.columns.iter().enumerate() {
             let value = match key_values.iter().find(|(key, _)| *key == &column.name) {
-                Some((_, value)) => Some(value.clone()),
+                Some((_, value)) => value.clone(),
                 None => match column.default {
                     Some(ref default) => {
                         let value = column.data_type.parse(default)?;  
-                        Some(value) 
+                        value
                     },
                     None => match column.not_null {
                         true => return Err(format!("Column '{}' does not allow NULL values", column.name)),
-                        false => None,
+                        false => Value::Null,
                     }
                 }
             };
 
-            let value = value.unwrap_or(Value::Null);
-
-            // TODO: fix this 
-            // we have to use this way of converting back to str and then to value since thats the
-            // old way of doing this in the previous query runner which should be deprecated
-            let value_str = match value {
-                Value::Null => None,
-                v => Some(v.to_string())
-            };
-
-            let parsed_value = column.validate_option(&value_str)?;
-            
+            let parsed_value = column.transform_value(&value)?;
             row.set(i, parsed_value)
         }
 
