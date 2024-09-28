@@ -67,6 +67,34 @@ pub fn create_file(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub fn get_directories(path: &str) -> Result<Vec<String>, String> {
+    match fs::read_dir(path) {
+        Ok(entries) => {
+            let dirs = entries
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap()
+                .into_iter()
+                .filter_map(|entry| {
+                    let metadata = entry.metadata();
+
+                    if metadata.is_err() { return None }
+                    if !metadata.unwrap().is_dir() { return None }
+
+                    Some(entry.file_name().to_str().unwrap().to_string())
+                })
+                .collect();
+            Ok(dirs)
+        },
+        Err(e) => {
+            let err_msg = format!("failed to read dir {}\n{}", path, e);
+            log::error(&err_msg);
+            return Err(err_msg)
+        }
+    }
+}
+
+
+
 pub fn get_entires(path: &str) {
     let result = std::fs::read_dir(path);
 
