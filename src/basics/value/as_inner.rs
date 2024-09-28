@@ -17,7 +17,14 @@ impl Value {
 
     pub fn as_array(&self) -> Option<&Vec<Value>> {
         match self {
-            Value::Array(n) => Some(n),
+            Value::Array(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::Boolean(b) => Some(*b),
             _ => None,
         }
     }
