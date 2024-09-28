@@ -32,7 +32,7 @@ impl ClusterBuilder {
     }
 
     pub fn load(&self) -> Result<Cluster, String> {
-        log::info("loading cluster");
+        log::info(format!("loading cluster '{}'", self.name));
 
         let path = self.path();
         let path = Path::new(&path).to_str().ok_or("invalid path")?;
@@ -49,7 +49,7 @@ impl ClusterBuilder {
 
         // load databases
         for name in directories {
-            log::info(&format!("loading database '{}'", name));
+            log::info(&format!("loading database '{}' into cluster", name));
             let db = DatabaseBuilder::new().name(&name).root_dir(path).load()?;
             let db = Arc::new(RwLock::new(db));
             databases.insert(name.clone(), db.clone()); 
@@ -81,6 +81,8 @@ impl ClusterBuilder {
     }
 
     fn load_roles(internal: Arc<RwLock<Database>>) -> Result<HashMap<String, Role>, String> {
+        log::info("loading internal roles");
+
         let query_result = Database::run(internal, "query roles select *".to_owned()).or(Err("failed to query roles".to_owned()))?; 
         let mut roles = HashMap::new();
         
@@ -112,10 +114,13 @@ impl ClusterBuilder {
             }
         }
 
+        log::success("roles loaded");
         Ok(roles)
     }
 
     fn load_users(internal: Arc<RwLock<Database>>, roles: &HashMap<String, Role>) -> Result<HashMap<String, User>, String> {
+        log::info("loading internal users");
+
         let query_result = Database::run(internal, "query users select *".to_owned()).or(Err("failed to query users".to_owned()))?; 
         let mut users = HashMap::new();
         
@@ -155,6 +160,7 @@ impl ClusterBuilder {
             }
         }
 
+        log::success("users loaded");
         Ok(users)
     }
 }
