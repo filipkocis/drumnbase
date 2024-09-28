@@ -1,8 +1,11 @@
 mod validate;
 mod r#type;
 mod parse;
+mod transform;
 
 pub use r#type::*;
+pub use validate::Validate;
+pub use transform::Transform;
 
 #[derive(Debug)]
 pub struct Column {
