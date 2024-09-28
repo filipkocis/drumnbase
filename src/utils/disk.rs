@@ -15,6 +15,34 @@ pub fn remove_directory_all(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Removes file 'path', fs::remove_file
+pub fn remove_file(path: &str) -> Result<(), String> {
+    let result = fs::remove_file(path);
+
+    if let Err(e) = result {
+        let err_msg = format!("failed to remove file {}\n{}", path, e);
+        log::error(&err_msg);
+        return Err(err_msg);
+    }
+
+    log::info(format!("removed file {}", path)); 
+    Ok(())
+}
+
+/// Writes content to file 'path', fs::write
+pub fn write_file(path: &str, content: &str) -> Result<(), String> {
+    let result = fs::write(path, content);
+
+    if let Err(e) = result {
+        let err_msg = format!("failed to write file {}\n{}", path, e);
+        log::error(&err_msg);
+        return Err(err_msg);
+    }
+
+    log::info(format!("wrote file {}", path));
+    Ok(())
+}
+
 pub fn copy_file(from: &str, to: &str) -> Result<(), String> {
     let result = fs::copy(from, to);
 
@@ -41,6 +69,7 @@ pub fn create_directory(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Creates full directory path
 pub fn create_directory_all(path: &str) -> Result<(), String> {
     let result = fs::create_dir_all(path);
 
@@ -67,6 +96,7 @@ pub fn create_file(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Returns a list of directories in directory 'path'
 pub fn get_directories(path: &str) -> Result<Vec<String>, String> {
     match fs::read_dir(path) {
         Ok(entries) => {
