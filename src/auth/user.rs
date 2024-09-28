@@ -1,5 +1,6 @@
 use super::{Privilege, Role};
 
+#[derive(Debug)]
 pub struct User {
     pub name: String,
     pub hash: String,
