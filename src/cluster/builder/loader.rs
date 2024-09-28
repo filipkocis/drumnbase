@@ -28,7 +28,7 @@ impl ClusterBuilder {
             let db = Arc::new(RwLock::new(db));
             databases.insert(name.clone(), db.clone()); 
 
-            if name == "drumnbase" {
+            if name == Self::INTERNAL_DB_NAME {
                 if let Some(_) = internal.replace(db) {
                     let err_msg = "multiple internal databases found".to_owned();
                     log::error(&err_msg);
@@ -110,7 +110,7 @@ impl ClusterBuilder {
                     // TODO: implement row.get("name")
                     let name = row[0].as_text().ok_or("invalid user name")?; 
                     let hash = row[1].as_text().ok_or("invalid user hash")?;
-                    let role_name = row[2].as_text().ok_or("invalid role name")?;
+                    let role_name = row[2].as_text().ok_or("invalid role name");
                     let is_superuser = row[3].as_bool().ok_or("invalid user is_superuser")?;
 
                     let user = users.entry(name.to_owned()).or_insert(User::new(name, hash));
@@ -118,6 +118,9 @@ impl ClusterBuilder {
                     if is_superuser {
                         user.is_superuser = true;
                     }
+
+                    if role_name.is_err() && row[2] == Value::Null { continue }
+                    let role_name = role_name?;
 
                     if let Some(role) = roles.get(role_name) {
                         user.add_role(role.clone());
@@ -133,6 +136,12 @@ impl ClusterBuilder {
                 log::error(&err_msg);
                 return Err(err_msg)
             }
+        }
+
+        if !users.contains_key(Self::INTERNAL_SUPERUSER_NAME) {
+            let err_msg = "internal superuser not found".to_owned();
+            log::error(&err_msg);
+            return Err(err_msg)
         }
 
         log::success("users loaded");
