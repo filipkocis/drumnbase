@@ -2,6 +2,7 @@ use self::action::{DatabaseAction, TableAction, ColumnAction, FunctionAction};
 
 pub mod action;
 
+#[derive(Clone)]
 pub enum Privilege {
     Database {
         name: String,

@@ -1,5 +1,6 @@
 use super::Privilege;
 
+#[derive(Clone)]
 pub struct Role {
     pub name: String,
     pub privileges: Vec<Privilege>,

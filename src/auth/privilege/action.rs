@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub enum DatabaseAction {
     Create,
     Drop,
@@ -5,6 +6,7 @@ pub enum DatabaseAction {
     Grant,
 }
 
+#[derive(Clone)]
 pub enum TableAction {
     Select,
     Insert,
@@ -15,11 +17,13 @@ pub enum TableAction {
     Grant,
 }
 
+#[derive(Clone)]
 pub enum ColumnAction {
     Update,
     Grant,
 }
 
+#[derive(Clone)]
 pub enum FunctionAction {
     Execute,
     Grant,
