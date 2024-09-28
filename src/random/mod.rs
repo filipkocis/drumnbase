@@ -82,4 +82,12 @@ impl Random {
     pub fn uppercase() -> &'static str {
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     }
+
+    pub fn hex() -> &'static str {
+        "0123456789abcdef"
+    }
+
+    pub fn all() -> &'static str {
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+    }
 }
