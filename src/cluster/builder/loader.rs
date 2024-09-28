@@ -51,6 +51,7 @@ impl ClusterBuilder {
             users,
         };
 
+        log::success("cluster loaded");
         Ok(cluster)
     }
 
