@@ -39,7 +39,7 @@ impl ClusterBuilder {
     fn create_internal_database(root_dir: &str) -> Result<Database, String> {
         log::info("creating internal database");
 
-        let internal_name = "drumnbase";
+        let internal_name = Self::INTERNAL_DB_NAME;
         let schema_path = format!("{}/.temp-internal-schema", root_dir);
 
         disk::write_file(&schema_path, INTERNAL_DB_SCHEMA)?;
@@ -61,7 +61,7 @@ impl ClusterBuilder {
         let mut users = HashMap::new();
 
         let hash = Hashish::hash(superuser_password)?;
-        let mut user = User::new("drumnbase", &hash);
+        let mut user = User::new(Self::INTERNAL_SUPERUSER_NAME, &hash);
         user.is_superuser = true;
 
         let query = format!("query users insert name:'{}' hash:'{}' is_superuser:{}", user.name, user.hash, user.is_superuser);

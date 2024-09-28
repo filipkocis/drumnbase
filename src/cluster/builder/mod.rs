@@ -29,4 +29,7 @@ impl ClusterBuilder {
     pub fn path(&self) -> String {
         format!("{}/", self.root_dir) 
     }
+
+    pub const INTERNAL_DB_NAME: &'static str = "drumnbase";
+    pub const INTERNAL_SUPERUSER_NAME: &'static str = "drumnbase";
 }
