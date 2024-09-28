@@ -115,6 +115,7 @@ impl DatabaseBuilder {
 
         let mut database = Database::from_schema(&self.name, &self.root_dir, schema);
         database.purge()?;
+        database.add_builtin_functions();
 
         log::success(format!("loaded database '{}'", self.name));
         Ok(database)

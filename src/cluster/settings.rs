@@ -1,5 +1,6 @@
 use crate::utils::log;
 
+#[derive(Debug)]
 pub struct ClusterSettings {
     pub name: String,
     pub root_dir: String,
