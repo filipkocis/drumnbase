@@ -2,35 +2,9 @@ use std::{collections::HashMap, path::Path, sync::{Arc, RwLock}};
 
 use crate::{utils::{log, disk}, database::{DatabaseBuilder, Database, Run}, basics::Value, auth::{Role, Privilege, User}};
 
-use super::{Cluster, ClusterSettings};
-
-pub struct ClusterBuilder {
-    name: String,
-    root_dir: String,
-}
+use super::{super::{Cluster, ClusterSettings}, ClusterBuilder};
 
 impl ClusterBuilder {
-    pub fn new(name: &str, root_dir: &str) -> Self {
-        if root_dir.is_empty() {
-            log::error("missing field root_dir");
-            panic!("missing field root_dir")
-        }
-
-        if name.is_empty() {
-            log::error("missing field name");
-            panic!("missing field name")
-        }
-
-        ClusterBuilder {
-            name: name.to_owned(),
-            root_dir: root_dir.to_owned(),
-        }
-    }
-
-    pub fn path(&self) -> String {
-        format!("{}/", self.root_dir) 
-    }
-
     pub fn load(&self) -> Result<Cluster, String> {
         log::info(format!("loading cluster '{}'", self.name));
 
