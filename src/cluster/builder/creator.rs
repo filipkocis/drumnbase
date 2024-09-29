@@ -1,6 +1,6 @@
 use std::{path::Path, sync::{Arc, RwLock}, collections::HashMap};
 
-use crate::{utils::{log, disk}, cluster::{Cluster, ClusterSettings}, database::{DatabaseBuilder, Database, Run}, auth::{User, Hashish}, random::Random};
+use crate::{utils::{log, disk}, cluster::{Cluster, ClusterSettings}, database::{DatabaseBuilder, Database, Run}, auth::{User, Hashish}};
 
 use super::ClusterBuilder;
 
@@ -23,9 +23,12 @@ impl ClusterBuilder {
         let internal = Arc::new(RwLock::new(internal)); 
         let settings = ClusterSettings::new(&self.name, &path);
         let users = Self::add_default_users(internal.clone(), password)?;
+
+        let mut databases = HashMap::new();
+        databases.insert(Self::INTERNAL_DB_NAME.to_owned(), internal.clone());
         
         let cluster = Cluster {
-            databases: Default::default(),
+            databases,
             internal,
             settings,
             roles: Default::default(),
