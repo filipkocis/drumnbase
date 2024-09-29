@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::{Privilege, Role};
 
 #[derive(Clone, Debug)]
@@ -5,7 +7,7 @@ pub struct User {
     pub name: String,
     pub hash: String,
     pub roles: Vec<Role>,
-    pub privileges: Vec<Privilege>,
+    pub privileges: HashSet<Privilege>,
     pub is_superuser: bool,
 }
 
@@ -15,7 +17,7 @@ impl User {
             name: name.to_owned(),
             hash: hash.to_owned(),
             roles: Vec::new(),
-            privileges: Vec::new(),
+            privileges: HashSet::new(),
             is_superuser: false,
         }
     }

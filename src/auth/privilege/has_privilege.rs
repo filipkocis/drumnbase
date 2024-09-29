@@ -11,7 +11,7 @@ pub trait HasPrivilege {
 
 impl HasPrivilege for User {
     fn has_privilege(&self, privilege: &Privilege) -> bool {
-        if self.privileges.iter().any(|p| p == privilege) {
+        if self.privileges.contains(privilege) {
             return true
         }
 
@@ -21,6 +21,6 @@ impl HasPrivilege for User {
 
 impl HasPrivilege for Role {
     fn has_privilege(&self, privilege: &Privilege) -> bool {
-        self.privileges.iter().any(|p| p == privilege)
+        self.privileges.contains(privilege)
     }
 }
