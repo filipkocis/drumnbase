@@ -68,7 +68,7 @@ impl ClusterBuilder {
         user.is_superuser = true;
 
         let query = format!("query users insert name:'{}' hash:'{}' is_superuser:{}", user.name, user.hash, user.is_superuser);
-        Database::run(internal, query)?;
+        Database::run(internal, Cluster::root_user_rc(), query)?;
 
         users.insert(user.name.clone(), user);
 

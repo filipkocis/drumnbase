@@ -1,6 +1,6 @@
-use std::sync::{Arc, RwLock};
+use std::{sync::{Arc, RwLock}, rc::Rc};
 
-use crate::{syntax::{runner::Runner, tokenizer::Tokenizer, context::RunnerContext, parser::Parser}, basics::Value};
+use crate::{syntax::{runner::Runner, tokenizer::Tokenizer, context::{RunnerContext}, parser::Parser}, basics::Value, auth::User};
 
 use super::Database;
 
@@ -10,15 +10,15 @@ pub struct QueryResult {
 }
 
 pub trait Run {
-    fn run(database: Arc<RwLock<Database>>, input: String) -> Result<QueryResult, String>;
+    fn run(database: Arc<RwLock<Database>>, user: Rc<User>, input: String) -> Result<QueryResult, String>;
 }
 
 impl Run for Database {
-    fn run(database: Arc<RwLock<Database>>, input: String) -> Result<QueryResult, String> {
+    fn run(database: Arc<RwLock<Database>>, user: Rc<User>, input: String) -> Result<QueryResult, String> {
         let tokens = Tokenizer::new(input).tokenize()?;
         let ast = Parser::new(tokens).parse().or_else(|_| Err("failed to parse".to_string()))?;
         let runner = Runner::new(database);
-        let ctx = RunnerContext::new_ctx();
+        let ctx = RunnerContext::new_ctx(user);
 
         match runner.run(&ast, &ctx) {
             Ok(result) => match result {

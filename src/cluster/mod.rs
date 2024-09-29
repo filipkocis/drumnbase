@@ -4,7 +4,7 @@ mod settings;
 pub use builder::ClusterBuilder;
 pub use settings::ClusterSettings;
 
-use std::{collections::HashMap, sync::{Arc, RwLock}};
+use std::{collections::HashMap, sync::{Arc, RwLock}, rc::Rc};
 
 use crate::{database::Database, auth::{Role, User}};
 
@@ -15,6 +15,18 @@ pub struct Cluster {
 
     pub internal: Arc<RwLock<Database>>,
     pub settings: ClusterSettings,
+}
+
+impl Cluster {
+    pub fn root_user() -> User {
+        let mut user = User::new("root", "");
+        user.is_superuser = true;
+        user
+    }
+
+    pub fn root_user_rc() -> Rc<User> {
+        Rc::new(Self::root_user())
+    }
 }
 
 impl Default for Cluster {

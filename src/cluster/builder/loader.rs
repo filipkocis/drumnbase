@@ -58,7 +58,8 @@ impl ClusterBuilder {
     fn load_roles(internal: Arc<RwLock<Database>>) -> Result<HashMap<String, Role>, String> {
         log::info("loading internal roles");
 
-        let query_result = Database::run(internal, "query roles select *".to_owned()).or(Err("failed to query roles".to_owned()))?; 
+        let query_result = Database::run(internal, Cluster::root_user_rc(), "query roles select *".to_owned())
+            .or(Err("failed to query roles".to_owned()))?; 
         let mut roles = HashMap::new();
         
         // parse roles
@@ -96,7 +97,8 @@ impl ClusterBuilder {
     fn load_users(internal: Arc<RwLock<Database>>, roles: &HashMap<String, Role>) -> Result<HashMap<String, User>, String> {
         log::info("loading internal users");
 
-        let query_result = Database::run(internal, "query users select *".to_owned()).or(Err("failed to query users".to_owned()))?; 
+        let query_result = Database::run(internal, Cluster::root_user_rc(), "query users select *".to_owned())
+            .or(Err("failed to query users".to_owned()))?; 
         let mut users = HashMap::new();
         
         // parse roles
