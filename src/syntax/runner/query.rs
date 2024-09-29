@@ -1,4 +1,4 @@
-use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::{Value, Row, value::NumericValue}};
+use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::{Value, Row, value::NumericValue}, auth::{Authorize, action::TableAction}};
 
 use super::{Runner, Ctx, RunnerResult};
 
@@ -19,6 +19,9 @@ impl Runner {
     fn eval_select(&self, select: &SelectQuery, ctx: &Ctx) -> RunnerResult {
         let database = self.database.read().unwrap();
         let table = database.get_table(&select.table).unwrap();
+
+        table.authorize(&ctx.user, TableAction::Select)?;
+
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
 
@@ -194,6 +197,11 @@ impl Runner {
     }
 
     fn eval_insert(&self, insert: &InsertQuery, ctx: &Ctx) -> RunnerResult {
+        let mut database = self.database.write().unwrap();
+        let table = database.get_table_mut(&insert.table).unwrap();
+
+        table.authorize(&ctx.user, TableAction::Insert)?;
+
         // eval the key_values
         let mut key_values = vec![];
         for (key, value) in &insert.key_values {
@@ -202,8 +210,6 @@ impl Runner {
         }
         // TODO: check duplicates
 
-        let mut database = self.database.write().unwrap();
-        let table = database.get_table_mut(&insert.table).unwrap();
         let column_names = insert.key_values.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>();
         
         // check if columns exist in the table
@@ -259,6 +265,11 @@ impl Runner {
     }
     
     fn eval_update(&self, update: &UpdateQuery, ctx: &Ctx) -> RunnerResult {
+        let mut database = self.database.write().unwrap();
+        let table = database.get_table_mut(&update.table).unwrap();
+
+        table.authorize(&ctx.user, TableAction::Update)?;
+
         // eval the key_values
         let mut key_values = vec![];
         for (key, value) in &update.key_values {
@@ -267,8 +278,6 @@ impl Runner {
         }
         // TODO: check duplicates
 
-        let mut database = self.database.write().unwrap();
-        let table = database.get_table_mut(&update.table).unwrap();
         let column_names = update.key_values.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>();
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
@@ -335,6 +344,9 @@ impl Runner {
     fn eval_delete(&self, delete: &DeleteQuery, ctx: &Ctx) -> RunnerResult {
         let mut database = self.database.write().unwrap();
         let table = database.get_table_mut(&delete.table).unwrap();
+
+        table.authorize(&ctx.user, TableAction::Delete)?;
+
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
 
