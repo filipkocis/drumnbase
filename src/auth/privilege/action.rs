@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DatabaseAction {
     Create,
     Drop,
@@ -6,7 +6,7 @@ pub enum DatabaseAction {
     Grant,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TableAction {
     Select,
     Insert,
@@ -17,13 +17,13 @@ pub enum TableAction {
     Grant,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ColumnAction {
     Update,
     Grant,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FunctionAction {
     Execute,
     Grant,

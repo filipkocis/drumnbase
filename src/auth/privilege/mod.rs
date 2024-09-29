@@ -1,8 +1,13 @@
 use self::action::{DatabaseAction, TableAction, ColumnAction, FunctionAction};
 
 pub mod action;
+mod from_object;
+mod has_privilege;
 
-#[derive(Clone, Debug)]
+pub use from_object::PrivilegeFromObject;
+pub use has_privilege::HasPrivilege;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Privilege {
     Database {
         name: String,
