@@ -65,7 +65,7 @@ impl ColumnType {
 
             ColumnType::Boolean => value.parse::<bool>().map(Value::Boolean).map_err(|e| e.to_string()),
             ColumnType::Binary => value.parse::<Bytes>().map(|v| Value::Binary(v.0)).map_err(|e| e.to_string()),
-            ColumnType::Array(t) => todo!("column array parsing"),
+            ColumnType::Array(_t) => todo!("column array parsing"),
             ColumnType::Enum => todo!("column enum parsing"),
             ColumnType::UUID => todo!("column uuid parsing"),
         };
