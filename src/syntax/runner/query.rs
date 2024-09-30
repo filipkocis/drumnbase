@@ -17,8 +17,11 @@ impl Runner {
     }
 
     fn eval_select(&self, select: &SelectQuery, ctx: &Ctx) -> RunnerResult {
-        let database = self.database.read().unwrap();
-        let table = database.get_table(&select.table).unwrap();
+        let database = self.database.read().expect("Cannot get read lock on database");
+        let table = match database.get_table(&select.table) {
+            Some(table) => table,
+            None => return Err(format!("Table '{}' does not exist in database '{}'", select.table, database.name))
+        };
 
         table.authorize(&ctx.user, TableAction::Select)?;
 
@@ -197,8 +200,11 @@ impl Runner {
     }
 
     fn eval_insert(&self, insert: &InsertQuery, ctx: &Ctx) -> RunnerResult {
-        let mut database = self.database.write().unwrap();
-        let table = database.get_table_mut(&insert.table).unwrap();
+        let mut database = self.database.write().expect("Cannot get write lock on database");
+        let table = match database.get_table_mut(&insert.table) {
+            Some(table) => table,
+            None => return Err(format!("Table '{}' does not exist in database '{}'", insert.table, database.name))
+        };
 
         table.authorize(&ctx.user, TableAction::Insert)?;
 
@@ -265,8 +271,11 @@ impl Runner {
     }
     
     fn eval_update(&self, update: &UpdateQuery, ctx: &Ctx) -> RunnerResult {
-        let mut database = self.database.write().unwrap();
-        let table = database.get_table_mut(&update.table).unwrap();
+        let mut database = self.database.write().expect("Cannot get write lock on database");
+        let table = match database.get_table_mut(&update.table) {
+            Some(table) => table,
+            None => return Err(format!("Table '{}' does not exist in database '{}'", update.table, database.name))
+        };
 
         table.authorize(&ctx.user, TableAction::Update)?;
 
@@ -342,8 +351,11 @@ impl Runner {
     }
 
     fn eval_delete(&self, delete: &DeleteQuery, ctx: &Ctx) -> RunnerResult {
-        let mut database = self.database.write().unwrap();
-        let table = database.get_table_mut(&delete.table).unwrap();
+        let mut database = self.database.write().expect("Cannot get write lock on database");
+        let table = match database.get_table_mut(&delete.table) {
+            Some(table) => table,
+            None => return Err(format!("Table '{}' does not exist in database '{}'", delete.table, database.name))
+        };
 
         table.authorize(&ctx.user, TableAction::Delete)?;
 
