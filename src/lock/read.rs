@@ -2,6 +2,36 @@ use std::{ptr, ops::Deref};
 
 use super::{UnsafeRwLockReadGuard, UnsafeRwLock};
 
+impl <'a, T> UnsafeRwLockReadGuard<'a, T> {
+    pub fn new(lock: &'a UnsafeRwLock<T>, is_downgraded: bool) -> Self {
+        unsafe {
+            if is_downgraded {
+                let writes = &mut *lock.state.writes.get();
+                *writes += 1;
+            } else {
+                let reads = &mut *lock.state.reads.get();
+                *reads += 1;
+            }
+        }
+
+        Self { lock, is_downgraded }
+    }
+}
+
+impl<'a, T> Deref for UnsafeRwLockReadGuard<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe {
+            if self.is_downgraded {
+                &***self.lock.state.write_lock.get()
+            } else {
+                &***self.lock.state.read_lock.get()
+            }
+        }
+    }
+}
+
 impl <'a, T> Drop for UnsafeRwLockReadGuard<'a, T> {
     fn drop(&mut self) {
         unsafe {
@@ -27,32 +57,3 @@ impl <'a, T> Drop for UnsafeRwLockReadGuard<'a, T> {
         }
     }
 }
-impl<'a, T> Deref for UnsafeRwLockReadGuard<'a, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe {
-            if self.is_downgraded {
-                &***self.lock.state.write_lock.get()
-            } else {
-                &***self.lock.state.read_lock.get()
-            }
-        }
-    }
-}
-impl <'a, T> UnsafeRwLockReadGuard<'a, T> {
-    pub fn new(lock: &'a UnsafeRwLock<T>, is_downgraded: bool) -> Self {
-        unsafe {
-            if is_downgraded {
-                let writes = &mut *lock.state.writes.get();
-                *writes += 1;
-            } else {
-                let reads = &mut *lock.state.reads.get();
-                *reads += 1;
-            }
-        }
-
-        Self { lock, is_downgraded }
-    }
-}
-

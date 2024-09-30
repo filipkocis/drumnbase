@@ -23,8 +23,11 @@ mod tests;
 /// It should be constructed after receiving/moving some thread-safe data, and should stay in the same
 /// thread. 
 ///
+/// # Errors
+/// Will return an error when trying to acquire a write lock while a read lock is active.
+///
 /// # Panics
-/// Will panic if a write lock is acquired while a read lock is active, or if inner lock panics.
+/// Will panic when inner lock panics. (e.g. poisoned lock)
 pub struct UnsafeRwLock<T> where T: 'static {
     inner: Arc<RwLock<T>>, // The actual RwLock we're managing
     state: Rc<LockState<T>>, // The state of the lock   
@@ -36,6 +39,7 @@ struct LockState<T> where T: 'static {
     reads: UnsafeCell<usize>, // Number of active read locks
     writes: UnsafeCell<usize>, // Number of active write locks
 }
+
 impl<T> LockState<T> {
     pub fn new() -> Self {
         Self {
