@@ -14,10 +14,10 @@ mod lock_tests {
     fn test_write() {
         let lock = UnsafeRwLock::new_from(5);
 
-        let mut write_guard = lock.write();
+        let mut write_guard = lock.write().unwrap();
         *write_guard = 10;
 
-        let write_guard = lock.write();
+        let write_guard = lock.write().unwrap();
         assert_eq!(*write_guard, 10);
     }
 
@@ -25,7 +25,7 @@ mod lock_tests {
     fn test_write_read() {
         let lock = UnsafeRwLock::new_from(5);
 
-        let mut write_guard = lock.write();
+        let mut write_guard = lock.write().unwrap();
         *write_guard = 10;
 
         let read_guard = lock.read();
@@ -62,7 +62,7 @@ mod lock_tests {
         let lock = UnsafeRwLock::new_from(0);
 
         let _1 = lock.read();
-        let _2 = lock.write();
+        let _2 = lock.write().unwrap();
     }
 
     #[test]
