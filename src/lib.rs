@@ -9,3 +9,4 @@ pub mod syntax;
 pub mod random;
 pub mod cluster;
 pub mod auth;
+pub mod lock;
