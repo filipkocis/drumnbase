@@ -6,7 +6,7 @@ impl Runner {
     pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> RunnerResult {
         let function = Function::custom(name, parameters, return_type, block);
 
-        let mut database = self.database.write().unwrap();
+        let mut database = self.database.write();
         if database.functions.contains_key(name) {
             return Err(format!("Function '{}' already exists", name))
         }
@@ -27,7 +27,7 @@ impl Runner {
                 }
             )
             .collect::<Result<Vec<Value>, String>>()?; 
-        let database = self.database.read().unwrap();
+        let database = self.database.read();
         
         if let Some(function) = database.functions.get(name) {
             if function.params.len() != arguments.len() {

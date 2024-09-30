@@ -1,6 +1,6 @@
 use std::{cell::RefCell, sync::{Arc, RwLock}};
 
-use crate::{basics::Value, database::Database};
+use crate::{basics::Value, database::Database, lock::UnsafeRwLock};
 
 use super::{ast::{Node}, context::Ctx};
 
@@ -29,7 +29,7 @@ enum BlockResult {
 }
 
 pub struct Runner {
-    pub database: Arc<RwLock<Database>>,
+    pub database: UnsafeRwLock<Database>,
     // pub variables: Rc<RefCell<HashMap<String, Value>>>,
     inside_loop: RefCell<bool>,
     break_loop: RefCell<bool>,
@@ -39,7 +39,7 @@ pub struct Runner {
 impl Runner {
     pub fn new(database: Arc<RwLock<Database>>) -> Self {
         Self {
-            database,
+            database: UnsafeRwLock::new(database),
             // variables: Rc::new(RefCell::new(HashMap::new())),
             inside_loop: RefCell::new(false),
             break_loop: RefCell::new(false),
