@@ -96,11 +96,14 @@ impl<T> UnsafeRwLock<T> {
     }
 
     /// Acquires a write lock and stores it
-    pub fn write(&self) -> UnsafeRwLockWriteGuard<T> {
+    ///
+    /// # Errors
+    /// Will return an error when a read lock exists
+    pub fn write(&self) -> Result<UnsafeRwLockWriteGuard<T>, String> {
         unsafe {
             // If we already have a read lock, panic
             if !(*self.state.read_lock.get()).is_null() {
-                panic!("Cannot acquire write lock while read lock is active")
+                return Err("Cannot acquire write lock while read lock is active".to_string())
             }
 
             // If we don't have a write lock yet, acquire it and store it
@@ -112,7 +115,7 @@ impl<T> UnsafeRwLock<T> {
             }
 
             // Return the write lock
-            UnsafeRwLockWriteGuard::new(self)
+            Ok(UnsafeRwLockWriteGuard::new(self))
         }
     }
 }

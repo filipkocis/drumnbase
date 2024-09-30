@@ -6,7 +6,7 @@ impl Runner {
     pub(super) fn eval_function(&self, name: &str, parameters: &Vec<(String, Type)>, return_type: &Type, block: &Box<Node>) -> RunnerResult {
         let function = Function::custom(name, parameters, return_type, block);
 
-        let mut database = self.database.write();
+        let mut database = self.database.write().map_err(|_| "Cannot create functions when in read mode")?;
         if database.functions.contains_key(name) {
             return Err(format!("Function '{}' already exists", name))
         }

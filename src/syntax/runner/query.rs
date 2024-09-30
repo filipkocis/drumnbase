@@ -200,7 +200,7 @@ impl Runner {
     }
 
     fn eval_insert(&self, insert: &InsertQuery, ctx: &Ctx) -> RunnerResult {
-        let mut database = self.database.write();
+        let mut database = self.database.write().map_err(|_| "Cannot call 'query insert' when in read mode")?;
         let table = match database.get_table_mut(&insert.table) {
             Some(table) => table,
             None => return Err(format!("Table '{}' does not exist in database '{}'", insert.table, database.name))
@@ -271,7 +271,7 @@ impl Runner {
     }
     
     fn eval_update(&self, update: &UpdateQuery, ctx: &Ctx) -> RunnerResult {
-        let mut database = self.database.write();
+        let mut database = self.database.write().map_err(|_| "Cannot call 'query update' when in read mode")?;
         let table = match database.get_table_mut(&update.table) {
             Some(table) => table,
             None => return Err(format!("Table '{}' does not exist in database '{}'", update.table, database.name))
@@ -351,7 +351,7 @@ impl Runner {
     }
 
     fn eval_delete(&self, delete: &DeleteQuery, ctx: &Ctx) -> RunnerResult {
-        let mut database = self.database.write();
+        let mut database = self.database.write().map_err(|_| "Cannot call 'query delete' when in read mode")?;
         let table = match database.get_table_mut(&delete.table) {
             Some(table) => table,
             None => return Err(format!("Table '{}' does not exist in database '{}'", delete.table, database.name))
