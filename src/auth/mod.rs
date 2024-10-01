@@ -3,12 +3,14 @@ mod role;
 mod user;
 mod hash;
 mod authorize;
+mod rls;
 
 pub use privilege::*;
 pub use role::Role;
 pub use user::User;
 pub use hash::Hashish;
 pub use authorize::Authorize;
+pub use rls::*;
 
 use crate::cluster::Cluster;
 

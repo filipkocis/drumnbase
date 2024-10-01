@@ -1,6 +1,6 @@
 use std::{path::PathBuf, collections::HashMap};
 
-use crate::{basics::column::Column, file::data::Data, utils::log, query::KeyVal};
+use crate::{basics::column::Column, file::data::Data, utils::log, query::KeyVal, auth::RlsPolicy};
 
 use super::row::Row;
 
@@ -17,6 +17,8 @@ pub struct Table {
     // pub partitions: Vec<Partition>,
     // pub comments: Vec<Comment>,
     // pub privileges: Vec<Privilege>,
+    pub rls_enabled: bool,
+    pub policies: HashMap<String, RlsPolicy>, 
 }
 
 impl Table {
@@ -54,6 +56,10 @@ impl Table {
             .iter()
             .position(|column| column.name == column_name)
             .ok_or(format!("Column '{}' not found in table '{}'", column_name, self.name))
+    }
+
+    pub fn set_policy(&mut self, policy: RlsPolicy) {
+        self.policies.insert(policy.name.clone(), policy);
     }
 
     pub fn load(&mut self, database_path: &str) {
@@ -205,6 +211,8 @@ impl Default for Table {
             columns: Vec::new(),
             data: Data::default(),
             read_only: false,
+            rls_enabled: true,
+            policies: HashMap::new(),
         }
     }
 }
