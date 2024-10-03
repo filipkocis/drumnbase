@@ -1,6 +1,6 @@
-use std::{rc::Rc, cell::RefCell, collections::HashMap, borrow::Cow};
+use std::{rc::Rc, cell::RefCell, collections::HashMap, borrow::Cow, sync::{Arc, RwLock}};
 
-use crate::{basics::{Row, Value}, auth::User};
+use crate::{basics::{Row, Value}, auth::User, database::RunOptions, cluster::Cluster};
 
 pub type Ctx<'a> = Rc<RunnerContext<'a>>;
 type Scope<'a> = Rc<RefCell<HashMap<String, ScopeValue<'a>>>>;
@@ -18,7 +18,7 @@ pub struct RunnerContext<'a> {
     current_row: RefCell<Option<*const Row>>,
     current_column_map: Option<HashMap<String, usize>>,
 
-    pub user: Rc<User>,
+    options: Rc<RunOptions>, // rc for easier cloning when scoping
     pub parent: Option<Ctx<'a>>,
 }
 
@@ -29,7 +29,7 @@ pub trait RunnerContextScope<'a> {
 }
 impl<'a> RunnerContextScope<'a> for RunnerContext<'a> {
     fn scoped(parent: Ctx<'a>) -> Self {
-        let mut ctx = RunnerContext::new(parent.user.clone());
+        let mut ctx = RunnerContext::new(parent.options.clone());
         ctx.parent = Some(parent.clone());
         ctx
     }
@@ -42,7 +42,7 @@ impl<'a> RunnerContextScope<'a> for RunnerContext<'a> {
 }
 impl<'a> RunnerContextScope<'a> for Ctx<'a> {
     fn scoped(parent: Ctx<'a>) -> Ctx {
-        let mut ctx = RunnerContext::new(parent.user.clone());
+        let mut ctx = RunnerContext::new(parent.options.clone());
         ctx.parent = Some(parent.clone());
         Rc::new(ctx)
     }
@@ -152,17 +152,29 @@ impl<'a> RunnerContextFields<'a> for RunnerContext<'a> {
 }
 
 impl<'a> RunnerContext<'a> {
-    pub fn new(user: Rc<User>) -> Self {
+    pub fn new(options: Rc<RunOptions>) -> Self {
         Self {
             variables: Rc::new(RefCell::new(HashMap::new())),
             current_row: RefCell::new(None),
             current_column_map: None,
-            user,
+            options,
             parent: None,
         }
     }
 
-    pub fn new_ctx(user: Rc<User>) -> Ctx<'a> {
-        Rc::new(RunnerContext::new(user))
+    pub fn new_ctx(options: Rc<RunOptions>) -> Ctx<'a> {
+        Rc::new(RunnerContext::new(options))
+    }
+
+    pub fn cluster_user(&self) -> &Rc<User> {
+        &self.options.cluster_user
+    }
+
+    pub fn auth_user(&self) -> &Rc<User> {
+        &self.options.auth_user
+    }
+
+    pub fn cluster(&self) -> &Arc<RwLock<Cluster>> {
+        &self.options.cluster
     }
 }
