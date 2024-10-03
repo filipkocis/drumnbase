@@ -135,7 +135,8 @@ impl DatabaseBuilder {
 
         let clean_up = |e| {
             log::error(format!("failed to create database '{}'\n{}", self.name, e));
-            disk::remove_directory_all(&database_path)
+            disk::remove_directory_all(&database_path)?;
+            Err(e)
         };
 
         disk::create_directory_all(&database_path).or_else(clean_up)?;
