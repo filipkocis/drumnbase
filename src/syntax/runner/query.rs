@@ -1,4 +1,4 @@
-use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::{Value, Row, value::NumericValue}, auth::{Authorize, action::TableAction}};
+use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::{Value, Row, value::NumericValue}, auth::{Authorize, action::TableAction, RlsAction}};
 
 use super::{Runner, Ctx, RunnerResult};
 
@@ -14,6 +14,22 @@ impl Runner {
         };
 
         result
+    }
+
+    fn eval_policies(&self, policies: &[&Node], ctx: &Ctx) -> Result<bool, String> {
+        if policies.len() == 0 { 
+            return Ok(true)
+        }
+
+        for policy in policies {
+            match self.run(policy, ctx)? {
+                Some(Value::Boolean(true)) => return Ok(true),
+                Some(Value::Boolean(false)) => (),
+                _ => return Err("Policy must return a boolean value".to_string())
+            }
+        }
+
+        Ok(false)
     }
 
     fn eval_select(&self, select: &SelectQuery, ctx: &Ctx) -> RunnerResult {
@@ -99,11 +115,17 @@ impl Runner {
         }).collect::<Vec<_>>();
 
         // evaluate where clause on each row
+        let policies = table.police(&ctx.cluster_user(), RlsAction::Select);
         let mut row_indexes = vec![];
         for (i, row) in table.data.iter().enumerate() {
             if row.is_deleted() { continue }
 
             ctx.set_row(row);
+
+            // check rls
+            if !self.eval_policies(&policies, ctx)? {
+                continue
+            }
 
             let where_clause_result = match &select.where_clause {
                 Some(node) => self.run(node, ctx),
@@ -263,6 +285,15 @@ impl Runner {
         // check if row passes all unique constraints
         table.check_unique(&row)?;
 
+        // check rls
+        let column_map = table.get_column_map(&table.get_column_names()).unwrap();
+        let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
+        ctx.set_row(&row);
+        let policies = table.police(&ctx.cluster_user(), RlsAction::Insert);
+        if !self.eval_policies(&policies, ctx)? {
+            return Err("Insertion violates row level security policy".to_string())
+        }
+
         let row_values = row.iter().map(|value| value.clone()).collect();
         table.data.buf_rows.push(row);
         table.sync_buffer()?;
@@ -321,13 +352,24 @@ impl Runner {
         }
         let column_indexes = parsed_key_vals.iter().map(|(i, _)| *i).collect::<Vec<_>>();
 
+        // HINT: this is somewhat safe, because policies will not be modified via the mutable
+        // usage of the table below, and it's faster than cloning
+        let policies = table.police(&ctx.cluster_user(), RlsAction::Update).iter().map(|&p| p as *const Node ).collect::<Vec<_>>();
+        let policies = policies.into_iter().map(|p| unsafe { &*p as &Node }).collect::<Vec<_>>();
+
         // evaluate where clause on each row
         let mut updated_rows_count = 0;
         for index in 0..table.data.len() {
             let row = table.data.get_mut(index).unwrap();
             if row.is_deleted() { continue }
-            
+
             ctx.set_row(row);
+
+            // check rls
+            // TODO: give access to "new row" in ctx for rls
+            if !self.eval_policies(&policies, ctx)? {
+                return Err("Insertion violates row level security policy".to_string())
+            }
 
             let where_clause_result = match &update.where_clause {
                 Some(node) => self.run(node, ctx),
@@ -362,6 +404,11 @@ impl Runner {
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
 
+        // HINT: this is somewhat safe, because policies will not be modified via the mutable
+        // usage of the table below, and it's faster than cloning
+        let policies = table.police(&ctx.cluster_user(), RlsAction::Delete).iter().map(|&p| p as *const Node ).collect::<Vec<_>>();
+        let policies = policies.into_iter().map(|p| unsafe { &*p as &Node }).collect::<Vec<_>>();
+
         // evaluate where clause on each row
         let mut deleted_rows_count = 0;
         for index in 0..table.data.len() {
@@ -369,6 +416,11 @@ impl Runner {
             if row.is_deleted() { continue }
             
             ctx.set_row(row); 
+
+            // check rls
+            if !self.eval_policies(&policies, ctx)? {
+                return Err("Insertion violates row level security policy".to_string())
+            }
 
             let where_clause_result = match &delete.where_clause {
                 Some(node) => self.run(node, ctx),
