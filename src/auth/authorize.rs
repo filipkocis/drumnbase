@@ -3,7 +3,7 @@ use crate::{database::Database, basics::{Table, Column}, function::Function};
 use super::{User, PrivilegeFromObject, HasPrivilege};
 
 pub trait Authorize {
-    /// Authorize a user to perform an action on the object
+    /// Authorize an user to perform an action on the object
     fn authorize(&self, user: &User, action: <Self as PrivilegeFromObject>::Action) -> Result<(), String>
         where Self: PrivilegeFromObject
     {
@@ -21,7 +21,7 @@ pub trait Authorize {
         }
     }
 
-    /// Authorize a user to perform multiple actions on the object
+    /// Authorize an user to perform multiple actions on the object
     fn authorize_all(&self, user: &User, actions: &[<Self as PrivilegeFromObject>::Action]) -> Result<(), String>
         where Self: PrivilegeFromObject
     {
