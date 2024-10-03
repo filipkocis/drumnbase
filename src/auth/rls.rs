@@ -29,6 +29,7 @@ impl RlsPolicy {
 }
 
 impl Table {
+    /// Returns the rls policies which apply to the given user based on the action
     pub fn police(&self, user: &User, action: RlsAction) -> Vec<&Node> {
         if !self.rls_enabled || user.is_superuser {
             return vec![];
