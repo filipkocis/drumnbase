@@ -157,7 +157,6 @@ impl Tokenizer {
 
         self.mark_start();
         let operator = match current {
-            '%' => Some(Operator::Modulus), 
             '~' => Some(Operator::BitwiseNot), 
             '^' => Some(Operator::BitwiseXor), 
 
@@ -190,10 +189,13 @@ impl Tokenizer {
                 ('-', _) => Some(Operator::Subtract),
 
                 ('*', Some('=')) => adv_ret(self, Some(Operator::MultiplyAssign)),
+                ('*', Some('*')) => adv_ret(self, Some(Operator::Power)),
                 ('*', _) => Some(Operator::Multiply),
 
                 ('/', Some('=')) => adv_ret(self, Some(Operator::DivideAssign)),
-                ('/', _) => Some(Operator::Divide),
+
+                ('%', Some('=')) => adv_ret(self, Some(Operator::ModulusAssign)),
+                ('%', _) => Some(Operator::Modulus),
 
                 _ => None,
             }

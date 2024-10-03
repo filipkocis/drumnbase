@@ -123,6 +123,7 @@ pub enum Operator {
     Multiply,
     Divide,
     Modulus,
+    Power,
     Increment,
     Decrement,
     Assign,
@@ -130,6 +131,8 @@ pub enum Operator {
     SubtractAssign,
     MultiplyAssign,
     DivideAssign,
+    ModulusAssign,
+    PowerAssign,
     Equal,
     NotEqual,
     GreaterThan,
@@ -156,6 +159,7 @@ impl Operator {
             Operator::Multiply => ast::Operator::Mul,
             Operator::Divide => ast::Operator::Div,
             Operator::Modulus => ast::Operator::Mod,
+            Operator::Power => ast::Operator::Pow,
             Operator::Increment => ast::Operator::Inc,
             Operator::Decrement => ast::Operator::Dec,
 
@@ -165,6 +169,8 @@ impl Operator {
             Operator::SubtractAssign => ast::Operator::SubAssign,
             Operator::MultiplyAssign => ast::Operator::MulAssign,
             Operator::DivideAssign => ast::Operator::DivAssign,
+            Operator::ModulusAssign => ast::Operator::ModAssign,
+            Operator::PowerAssign => ast::Operator::PowAssign,
              
             // Comparison
             Operator::Equal => ast::Operator::Eq,
