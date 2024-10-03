@@ -612,7 +612,18 @@ impl Parser {
             let right = self.expression()?;
             let value = match ast_operator {
                 ast::Operator::Assign => right,
-                _ => Node::Expression(Expression::Binary { left: Box::new(left), operator: ast_operator, right: Box::new(right) })
+                _ => {
+                    let ast_operator = match ast_operator {
+                        ast::Operator::AddAssign => ast::Operator::Add,
+                        ast::Operator::SubAssign => ast::Operator::Sub,
+                        ast::Operator::MulAssign => ast::Operator::Mul,
+                        ast::Operator::DivAssign => ast::Operator::Div,
+                        ast::Operator::ModAssign => ast::Operator::Mod,
+                        ast::Operator::PowAssign => ast::Operator::Pow,
+                        _ => Err(self.expected("assignment operator"))?
+                    };
+                    Node::Expression(Expression::Binary { left: Box::new(left), operator: ast_operator, right: Box::new(right) })
+                }
             };
 
             Ok(Node::Statement(Statement::Assignment { name: identifier, value: Box::new(value) }))
