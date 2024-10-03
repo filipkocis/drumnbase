@@ -2,7 +2,7 @@ use crate::{syntax::ast::Node, basics::Table};
 
 use super::User;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RlsPolicy {
     pub name: String,
     pub action: RlsAction,

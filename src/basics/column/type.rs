@@ -1,11 +1,11 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TextType {
     Char,
     Variable,
     Fixed(u32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum NumericType {
     IntU8,
     IntU16,
@@ -21,7 +21,7 @@ pub enum NumericType {
     Float64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TimestampType {
     Seconds,
     Milliseconds,
@@ -31,7 +31,7 @@ pub enum TimestampType {
     // Time,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ColumnType {
     Numeric(NumericType),
     Text(TextType),
