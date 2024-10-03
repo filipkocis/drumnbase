@@ -23,7 +23,7 @@ impl Runner {
             None => return Err(format!("Table '{}' does not exist in database '{}'", select.table, database.name))
         };
 
-        table.authorize(&ctx.user, TableAction::Select)?;
+        table.authorize(&ctx.cluster_user(), TableAction::Select)?;
 
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
@@ -206,7 +206,7 @@ impl Runner {
             None => return Err(format!("Table '{}' does not exist in database '{}'", insert.table, database.name))
         };
 
-        table.authorize(&ctx.user, TableAction::Insert)?;
+        table.authorize(&ctx.cluster_user(), TableAction::Insert)?;
 
         // eval the key_values
         let mut key_values = vec![];
@@ -277,7 +277,7 @@ impl Runner {
             None => return Err(format!("Table '{}' does not exist in database '{}'", update.table, database.name))
         };
 
-        table.authorize(&ctx.user, TableAction::Update)?;
+        table.authorize(&ctx.cluster_user(), TableAction::Update)?;
 
         // eval the key_values
         let mut key_values = vec![];
@@ -295,7 +295,7 @@ impl Runner {
         // table.check_columns_exist(&column_names)?;
         column_names.iter().map(|name| {
             table.check_column_exists(name)
-        }).collect::<Result<_, _>>()?;        
+        }).collect::<Result<_, _>>()?;
 
         // check if any of the columns have unique constraints
         let unique_columns = column_names.iter().filter(|name| {
@@ -357,7 +357,7 @@ impl Runner {
             None => return Err(format!("Table '{}' does not exist in database '{}'", delete.table, database.name))
         };
 
-        table.authorize(&ctx.user, TableAction::Delete)?;
+        table.authorize(&ctx.cluster_user(), TableAction::Delete)?;
 
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
