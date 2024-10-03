@@ -1,6 +1,6 @@
-use std::{path::Path, sync::{Arc, RwLock}, collections::HashMap};
+use std::{path::Path, sync::{Arc, RwLock}, collections::HashMap, rc::Rc};
 
-use crate::{utils::{log, disk}, cluster::{Cluster, ClusterSettings}, database::{DatabaseBuilder, Database, Run}, auth::{User, Hashish}};
+use crate::{utils::{log, disk}, cluster::{Cluster, ClusterSettings}, database::{DatabaseBuilder, Database, Run, RunOptions}, auth::{User, Hashish}};
 
 use super::ClusterBuilder;
 
@@ -22,7 +22,7 @@ impl ClusterBuilder {
         let internal = Self::create_internal_database(&path)?;
         let internal = Arc::new(RwLock::new(internal)); 
         let settings = ClusterSettings::new(&self.name, &path);
-        let users = Self::add_default_users(internal.clone(), password)?;
+        let users = Self::add_default_users(internal.clone(), password, &settings)?;
 
         let mut databases = HashMap::new();
         databases.insert(Self::INTERNAL_DB_NAME.to_owned(), internal.clone());
@@ -58,7 +58,7 @@ impl ClusterBuilder {
         Ok(internal)
     }
 
-    fn add_default_users(internal: Arc<RwLock<Database>>, superuser_password: &str) -> Result<HashMap<String, User>, String> {
+    fn add_default_users(internal: Arc<RwLock<Database>>, superuser_password: &str, settings: &ClusterSettings) -> Result<HashMap<String, User>, String> {
         log::info("adding default users");
 
         let mut users = HashMap::new();
@@ -68,7 +68,8 @@ impl ClusterBuilder {
         user.is_superuser = true;
 
         let query = format!("query users insert name:'{}' hash:'{}' is_superuser:{}", user.name, user.hash, user.is_superuser);
-        Database::run(internal, Cluster::root_user_rc(), query)?;
+        let options = Cluster::root_run_options(internal.clone(), settings);
+        Database::run(internal, query, Rc::new(options))?;
 
         users.insert(user.name.clone(), user);
 

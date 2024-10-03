@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, sync::{Arc, RwLock}};
+use std::{collections::HashMap, path::Path, sync::{Arc, RwLock}, rc::Rc};
 
 use crate::{utils::{log, disk}, database::{DatabaseBuilder, Database, Run}, basics::Value, auth::{Role, Privilege, User}};
 
@@ -40,8 +40,8 @@ impl ClusterBuilder {
         let internal = internal.ok_or("internal database not found")?;
         let settings = ClusterSettings::new(&self.name, &self.root_dir);
 
-        let roles = Self::load_roles(internal.clone())?;
-        let users = Self::load_users(internal.clone(), &roles)?;
+        let roles = Self::load_roles(internal.clone(), &settings)?;
+        let users = Self::load_users(internal.clone(), &roles, &settings)?;
 
         let cluster = Cluster {
             databases,
@@ -55,10 +55,12 @@ impl ClusterBuilder {
         Ok(cluster)
     }
 
-    fn load_roles(internal: Arc<RwLock<Database>>) -> Result<HashMap<String, Role>, String> {
+    fn load_roles(internal: Arc<RwLock<Database>>, settings: &ClusterSettings) -> Result<HashMap<String, Role>, String> {
         log::info("loading internal roles");
 
-        let query_result = Database::run(internal, Cluster::root_user_rc(), "query roles select *".to_owned())
+        let query = "query roles select *".to_owned();
+        let options = Cluster::root_run_options(internal.clone(), settings);
+        let query_result = Database::run(internal, query, Rc::new(options))
             .or(Err("failed to query roles".to_owned()))?; 
         let mut roles = HashMap::new();
         
@@ -94,10 +96,12 @@ impl ClusterBuilder {
         Ok(roles)
     }
 
-    fn load_users(internal: Arc<RwLock<Database>>, roles: &HashMap<String, Role>) -> Result<HashMap<String, User>, String> {
+    fn load_users(internal: Arc<RwLock<Database>>, roles: &HashMap<String, Role>, settings: &ClusterSettings) -> Result<HashMap<String, User>, String> {
         log::info("loading internal users");
 
-        let query_result = Database::run(internal, Cluster::root_user_rc(), "query users select *".to_owned())
+        let query = "query users select *".to_owned();
+        let options = Cluster::root_run_options(internal.clone(), settings);
+        let query_result = Database::run(internal, query, Rc::new(options))
             .or(Err("failed to query users".to_owned()))?; 
         let mut users = HashMap::new();
         

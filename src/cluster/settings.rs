@@ -1,19 +1,19 @@
 use crate::utils::log;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClusterSettings {
     pub name: String,
     pub root_dir: String,
 }
 
-impl Default for ClusterSettings {
-    fn default() -> Self {
-        Self {
-            name: String::from(""),
-            root_dir: String::from("./data"),
-        }
-    }
-}
+// impl Default for ClusterSettings {
+//     fn default() -> Self {
+//         Self {
+//             name: String::from(""),
+//             root_dir: String::from("./data"),
+//         }
+//     }
+// }
 
 impl ClusterSettings {
     pub fn new(name: &str, root_dir: &str) -> Self {

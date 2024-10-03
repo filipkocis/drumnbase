@@ -5,4 +5,4 @@ mod run;
 
 pub use database::Database;
 pub use builder::DatabaseBuilder;
-pub use run::{QueryResult, Run};
+pub use run::{QueryResult, Run, RunOptions};
