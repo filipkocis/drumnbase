@@ -828,9 +828,13 @@ impl Parser {
             Ok(where_clause) => where_clause,
             Err(error) => {
                 parser_error.extend(error);
-                Err(parser_error)?
+                return Err(parser_error)
             }
         };
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
 
         let query = UpdateQuery {
             table: table_name,
