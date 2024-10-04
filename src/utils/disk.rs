@@ -83,6 +83,7 @@ pub fn create_directory_all(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Creates new file 'path', fs::OpenOptions
 pub fn create_file(path: &str) -> Result<(), String> {
     let result = std::fs::OpenOptions::new().write(true).create_new(true).open(path);
 
