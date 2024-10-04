@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs::OpenOptions;
 
 use crate::database::Database;
 use crate::parser::Schema;
@@ -10,6 +11,12 @@ impl Database {
             tables: schema.tables,
             root_dir: root_dir.to_string(),
             functions: HashMap::new(),
+            // TODO: should be removed later
+            schema: OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(Schema::path(&format!("{root_dir}/{name}"))).unwrap()
         }
     }
 }

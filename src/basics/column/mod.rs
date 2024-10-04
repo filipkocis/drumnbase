@@ -7,12 +7,15 @@ pub use r#type::*;
 pub use validate::Validate;
 pub use transform::Transform;
 
-#[derive(Debug)]
+use crate::syntax::ast::Node;
+
+#[derive(Debug, Clone)]
 pub struct Column {
     pub name: String,
     pub data_type: ColumnType,
     pub length: u32,
     pub default: Option<String>,
+    pub _default: Option<Node>, // TODO: Replace default with this
     pub not_null: bool,
     pub unique: bool,
     pub read_only: bool,
@@ -31,6 +34,7 @@ impl Column {
             data_type,
             length: 0,
             default: None,
+            _default: None,
             not_null: false,
             unique: false,
             read_only: false,
