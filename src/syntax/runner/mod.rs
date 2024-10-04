@@ -14,6 +14,7 @@ mod operator;
 mod function;
 mod r#type;
 mod query;
+mod sdl;
 
 type RunnerResult = Result<Option<Value>, String>;
 
@@ -54,7 +55,8 @@ impl Runner {
             Node::Statement(statement) => self.eval_statement(statement, ctx),
             Node::Expression(expression) => self.eval_expression(expression, ctx),
             Node::Query(query) => self.eval_query(query, ctx),
-            Node::Value(value) => Ok(Some(value.clone()))
+            Node::SDL(sdl) => self.eval_sdl(sdl, ctx),
+            Node::Value(value) => Ok(Some(value.clone())),
         }
     }
 }

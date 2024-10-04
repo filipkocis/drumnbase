@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use crate::{syntax::token::TokenKind};
+use crate::{syntax::token::{TokenKind, SDLKeyword}, basics::{Column, column::{ColumnType, NumericType, TextType, TimestampType}}, auth::{RlsPolicy, RlsAction}};
 
-use super::{token::{Token, Keyword, Symbol, Literal, Operator, QueryKeyword}, ast::{Node, Statement, Number, self, Expression, Type, SelectQuery, InsertQuery, UpdateQuery, DeleteQuery}};
+use super::{token::{Token, Keyword, Symbol, Literal, Operator, QueryKeyword}, ast::{Node, Statement, Number, self, Expression, Type, SelectQuery, InsertQuery, UpdateQuery, DeleteQuery, CreateSDL}};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -259,6 +259,7 @@ impl Parser {
             // TokenKind::EOF => Err("Unexpected EOF".to_string()),
             TokenKind::Keyword(_) => self.keyword(),
             TokenKind::Query(_) => self.query(),
+            TokenKind::SDL(_) => self.sdl(),
             _ => self.expression(),
         }
     }
@@ -1029,4 +1030,341 @@ impl Parser {
 
         Ok(columns)
     }
+}
+
+// SDL
+impl Parser {
+    fn sdl(&mut self) -> Result<Node, ParserError> {
+        let token = self.current_token("sdl")?;
+
+        let kind = match token.kind {
+            TokenKind::SDL(ref sdl) => sdl,
+            _ => Err(self.expected("sdl"))?,
+        };
+
+        match kind {
+            SDLKeyword::Create => self.create(),
+            SDLKeyword::Grant => self.grant(),
+            // SDLKeyword::Drop => self.drop(),
+
+            _ => Err(self.expected("valid sdl"))?
+        }
+    }
+
+    fn create(&mut self) -> Result<Node, ParserError> {
+        self.expect(TokenKind::SDL(SDLKeyword::Create))?;
+
+        let create_sdl = match self.current() {
+            Some(token) => match token.kind {
+                TokenKind::SDL(SDLKeyword::Database) => self.create_database()?,
+                TokenKind::SDL(SDLKeyword::Table) => self.create_table()?,
+                TokenKind::SDL(SDLKeyword::Policy) => self.create_policy()?,
+                TokenKind::SDL(SDLKeyword::User) => self.create_user()?,
+                TokenKind::SDL(SDLKeyword::Role) => self.create_role()?,
+                _ => Err(self.expected("valid sdl create object"))?
+            },
+            None => Err(self.expected("sdl type"))?
+        };
+
+        Ok(Node::SDL(ast::SDL::Create(create_sdl)))
+    }
+
+    fn create_database(&mut self) -> Result<CreateSDL, ASTError> {
+        self.expect(TokenKind::SDL(SDLKeyword::Database))?;
+        let name = self.identifier_name()?;
+        Ok(CreateSDL::Database { name })
+    }
+
+    fn create_table(&mut self) -> Result<CreateSDL, ParserError> {
+        self.expect(TokenKind::SDL(SDLKeyword::Table))?;
+        let name = self.identifier_name()?;
+
+        self.expect(TokenKind::Symbol(Symbol::LeftBrace))?;
+        let mut parser_error = ParserError::empty();
+        let mut columns = Vec::new();
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Symbol(Symbol::RightBrace) => break,
+                TokenKind::Symbol(Symbol::Semicolon) => { self.advance(); },
+                TokenKind::Identifier(_) => {
+                    let column = self.column_definition()?;
+                    columns.push(column)
+                }
+                _ => parser_error.add(self.expected("column"))
+            }
+        }
+
+        if let Err(err) = self.expect(TokenKind::Symbol(Symbol::RightBrace)) {
+            parser_error.add(err);
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
+        Ok(CreateSDL::Table { name, columns })
+    }
+
+    fn column_definition(&mut self) -> Result<Column, ParserError> {
+        let name = self.identifier_name()?;
+        self.expect(TokenKind::Symbol(Symbol::Colon))?;
+
+        let data_type = self.column_type_declaration()?;
+        let mut column = Column::new(&name, data_type);
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Symbol(Symbol::Semicolon) => break,
+                TokenKind::Symbol(Symbol::Comma) => self.advance(),
+
+                TokenKind::SDL(SDLKeyword::Required) => { self.advance(); column.not_null = true },
+                TokenKind::SDL(SDLKeyword::Unique) => { self.advance(); column.unique = true },
+                TokenKind::SDL(SDLKeyword::Default) => {
+                    self.advance();
+                    self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+                    column._default = Some(self.expression()?);
+                    self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?;
+                },
+                _ => Err(self.expected("column definition"))?
+            }
+        }
+
+        Ok(column)
+    }
+
+    fn column_type_declaration(&mut self) -> Result<ColumnType, ASTError> {
+        let token = self.current_token("column type")?;
+
+        let data_type = match token.kind {
+            TokenKind::Identifier(ref identifier) => {
+                match identifier.as_str() {
+                    "u8" => ColumnType::Numeric(NumericType::IntU8),
+                    "u16" => ColumnType::Numeric(NumericType::IntU16),
+                    "u32" => ColumnType::Numeric(NumericType::IntU32),
+                    "u64" => ColumnType::Numeric(NumericType::IntU64),
+                    "i8" => ColumnType::Numeric(NumericType::IntI8),
+                    "i16" => ColumnType::Numeric(NumericType::IntI16),
+                    "i32" => ColumnType::Numeric(NumericType::IntI32),
+                    "i64" => ColumnType::Numeric(NumericType::IntI64),
+                    "f32" => ColumnType::Numeric(NumericType::Float32),
+                    "f64" => ColumnType::Numeric(NumericType::Float64),
+
+                    "char" => ColumnType::Text(TextType::Char),
+                    "variable" => Err(self.expected("fixed size, variable size not supported"))?, 
+                    "fixed" => {
+                        self.advance();
+                        self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+
+                        let token = self.current_token("fixed size")?;
+                        let size = match &token.kind {
+                            TokenKind::Literal(Literal::Int(size)) => size.parse().unwrap(),
+                            _ => Err(self.expected("fixed size"))? 
+                        };
+                        self.advance();
+
+                        self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?; 
+
+                        return Ok(ColumnType::Text(TextType::Fixed(size)))
+                    },
+
+                    "time" => {
+                        self.advance();
+                        self.expect(TokenKind::Symbol(Symbol::LeftParenthesis))?;
+                        
+                        let token = self.current_token("timestamp type")?;
+                        let time_type = match &token.kind {
+                            TokenKind::Identifier(ref identifier) => {
+                                match identifier.as_str() {
+                                    "s" => TimestampType::Seconds,
+                                    "ms" => TimestampType::Milliseconds,
+                                    "us" => TimestampType::Microseconds,
+                                    "ns" => TimestampType::Nanoseconds,
+                                    _ => Err(self.expected("valid timestamp type"))? 
+                                }
+                            }
+                            _ => Err(self.expected("timestamp type"))? 
+                        };
+                        self.advance();
+
+                        self.expect(TokenKind::Symbol(Symbol::RightParenthesis))?; 
+                        return Ok(ColumnType::Timestamp(time_type))
+                    },
+
+                    "bool" => ColumnType::Boolean,
+
+                    _ => Err(self.expected("valid column type"))?
+                }
+            },
+            _ => Err(self.expected("column type"))?
+        };
+        self.advance();
+
+        Ok(data_type)
+    }
+
+    fn literal_string(&mut self) -> Result<String, ASTError> {
+        let token = self.current_token("literal string")?;
+
+        let string = match token.kind {
+            TokenKind::Literal(Literal::String(ref value)) => value.clone(),
+            _ => Err(self.expected("literal string"))?
+        };
+        self.advance();
+
+        Ok(string)
+    }
+
+    fn create_policy(&mut self) -> Result<CreateSDL, ParserError> {
+        self.expect(TokenKind::SDL(SDLKeyword::Policy))?;
+
+        let name = self.literal_string()?;
+        self.expect(TokenKind::Keyword(Keyword::For))?;
+        let table = self.identifier_name()?;
+        self.expect(TokenKind::Symbol(Symbol::Period))?;
+        
+        let action = match self.current_token("policy action")?.kind {
+            TokenKind::Query(QueryKeyword::Select) => RlsAction::Select,
+            TokenKind::Query(QueryKeyword::Insert) => RlsAction::Insert,
+            TokenKind::Query(QueryKeyword::Update) => RlsAction::Update,
+            TokenKind::Query(QueryKeyword::Delete) => RlsAction::Delete,
+            TokenKind::Identifier(ref ident) if ident == "all" => RlsAction::All,
+            _ => Err(self.expected("valid policy action"))?
+        };
+        self.advance();
+
+        let condition = self.expression()?;
+        let policy = Box::new(RlsPolicy::new(&name, action, condition));
+
+        Ok(CreateSDL::RlsPolicy { table, policy })
+    }
+
+    fn create_user(&mut self) -> Result<CreateSDL, ParserError> {
+        self.expect(TokenKind::SDL(SDLKeyword::User))?;
+        let name = self.identifier_name()?;
+
+        self.expect(TokenKind::Symbol(Symbol::Colon))?; 
+        let password = self.literal_string()?;
+
+        let is_superuser = match self.current() {
+            Some(token) if token.kind == TokenKind::Identifier("superuser".to_string()) => {
+                self.advance();
+                true
+            }
+            _ => false
+        };
+
+        Ok(CreateSDL::User { name, password, is_superuser })
+    }
+    
+    fn create_role(&mut self) -> Result<CreateSDL, ParserError> {
+        self.expect(TokenKind::SDL(SDLKeyword::Role))?;
+        let name = self.identifier_name()?;
+        Ok(CreateSDL::Role { name })
+    }
+
+    fn grant(&mut self) -> Result<Node, ParserError> {
+        self.expect(TokenKind::SDL(SDLKeyword::Grant))?;
+        
+        if let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::SDL(SDLKeyword::Role) => return self.grant_role(),
+                _ => { }
+            }
+        }
+
+        let actions = self.privilege_actions()?; 
+
+        let object = match self.current_token("privilege object")?.kind {
+            TokenKind::SDL(SDLKeyword::Database) => "database",
+            TokenKind::SDL(SDLKeyword::Table) => "table",
+            TokenKind::SDL(SDLKeyword::Column) => "column",
+            TokenKind::SDL(SDLKeyword::Policy) => "policy",
+            TokenKind::SDL(SDLKeyword::User) => "user",
+            TokenKind::SDL(SDLKeyword::Role) => "role",
+            _ => Err(self.expected("valid privilege object"))?,
+        }.to_string();
+        self.advance();
+
+        let object_name = self.identifier_name()?;
+
+        let table = if let Some(token) = self.current() {
+            if token.kind != TokenKind::Keyword(Keyword::For) {
+                Some(self.identifier_name()?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        self.expect(TokenKind::Keyword(Keyword::For))?;
+        let role = self.identifier_name()?;
+
+        Ok(Node::SDL(ast::SDL::Grant(ast::GrantSDL::Action { 
+            object, object_name, actions, table, to: role 
+        })))
+    }
+
+    fn privilege_actions(&mut self) -> Result<Vec<String>, ParserError> {
+        let mut actions = vec![];
+        while let Some(token) = self.current() {
+            let action = match token.kind {
+                TokenKind::Query(QueryKeyword::Select) => "select",
+                TokenKind::Query(QueryKeyword::Insert) => "insert",
+                TokenKind::Query(QueryKeyword::Update) => "udpate",
+                TokenKind::Query(QueryKeyword::Delete) => "delete",
+                TokenKind::SDL(SDLKeyword::Create) => "create",
+                TokenKind::SDL(SDLKeyword::Drop) => "drop",
+                TokenKind::SDL(SDLKeyword::Connect) => "connect",
+                TokenKind::SDL(SDLKeyword::Grant) => "grant",
+                TokenKind::SDL(SDLKeyword::Alter) => "alter",
+                TokenKind::SDL(SDLKeyword::Execute) => "execute",
+                _ => break
+            };
+
+            actions.push(action.to_string());
+            self.advance();
+
+            if let Some(token) = self.current() {
+                if token.kind == TokenKind::Symbol(Symbol::Comma) {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Ok(actions)
+    }
+
+    fn grant_role(&mut self) -> Result<Node, ParserError> {
+        self.expect(TokenKind::SDL(SDLKeyword::Role))?;
+
+        let role = self.identifier_name()?;
+        self.expect(TokenKind::Keyword(Keyword::For))?;
+
+        let user = self.identifier_name()?;
+
+        Ok(Node::SDL(ast::SDL::Grant(ast::GrantSDL::Role { 
+            name: role, to: user 
+        })))
+    }
+
+    // fn grant_database(&mut self, actions: Vec<&str>) -> Result<Vec<Privilege>, ParserError> {
+    //     self.expect(TokenKind::SDL(SDLKeyword::Database))?; 
+    //
+    //     let object_name = self.identifier_name()?;
+    //     let mut privileges = Vec::new();
+    //
+    //     for action in actions {
+    //         let privilege = match Privilege::from_fields("database", &object_name, action, None) {
+    //             Ok(privilege) => privilege,
+    //             Err(e) => Err(self.expected(format!("valie privilege: {e}")))?
+    //         };
+    //         privileges.push(privilege);
+    //     }
+    //
+    //     Ok(privileges)
+    // }
 }

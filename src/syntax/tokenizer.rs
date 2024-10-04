@@ -1,6 +1,6 @@
 use std::ops::RangeBounds;
 
-use super::token::{Token, TokenKind, Symbol, Operator, Literal, Keyword, QueryKeyword};
+use super::token::{Token, TokenKind, Symbol, Operator, Literal, Keyword, QueryKeyword, SDLKeyword};
 
 pub struct Tokenizer {
     input: String,
@@ -319,11 +319,18 @@ impl Tokenizer {
             "true" => Some(Keyword::True),
             "false" => Some(Keyword::False),
             "null" => Some(Keyword::Null),
-            _ => match self.query(&value) {
-                Some(token) => return Ok(token),
-                _ => None,
-            },
+            _ => None
         };
+
+        if keyword.is_none() {
+            if let Some(token) = self.query(&value) {
+                return Ok(token)
+            }
+
+            if let Some(token) = self.sdl(&value) {
+                return Ok(token)
+            }
+        }
 
         let kind = match keyword {
             Some(keyword) => TokenKind::Keyword(keyword),
@@ -336,29 +343,56 @@ impl Tokenizer {
     /// Parse query keywords
     fn query(&self, value: &str) -> Option<Token> {
         let query_keyword = match value {
-            "table" => QueryKeyword::Table,
             "query" => QueryKeyword::Query,
+            "as" => QueryKeyword::As,
 
             "select" => QueryKeyword::Select,
             "insert" => QueryKeyword::Insert,
             "update" => QueryKeyword::Update,
             "delete" => QueryKeyword::Delete,
 
-            "create" => QueryKeyword::Create,
-            "drop" => QueryKeyword::Drop,
-            "alter" => QueryKeyword::Alter,
-
             "where" => QueryKeyword::Where,
             "order" => QueryKeyword::Order,
             "limit" => QueryKeyword::Limit,
             "offset" => QueryKeyword::Offset,
             "exclude" => QueryKeyword::Exclude,
-            "as" => QueryKeyword::As,
     
             _ => return None
         };
 
         self.ok_token(TokenKind::Query(query_keyword)).ok()
+    }
+
+    /// Parse sdl keywords
+    fn sdl(&self, value: &str) -> Option<Token> {
+        let sdl_keyword = match value {
+            "database" => SDLKeyword::Database,
+            "table" => SDLKeyword::Table,
+            "column" => SDLKeyword::Column,
+            "policy" => SDLKeyword::Policy,
+            "user" => SDLKeyword::User,
+            "role" => SDLKeyword::Role,
+
+            "create" => SDLKeyword::Create,
+            "drop" => SDLKeyword::Drop,
+            "alter" => SDLKeyword::Alter,
+
+            "default" => SDLKeyword::Default,
+            "unique" => SDLKeyword::Unique,
+            "required" => SDLKeyword::Required,
+
+            "key" => SDLKeyword::Key,
+            "references" => SDLKeyword::References,
+    
+            "grant" => SDLKeyword::Grant,
+            "revoke" => SDLKeyword::Revoke,
+            "connect" => SDLKeyword::Connect,
+            "execute" => SDLKeyword::Execute,
+
+            _ => return None
+        };
+
+        self.ok_token(TokenKind::SDL(sdl_keyword)).ok()
     }
 
     /// Parse number token

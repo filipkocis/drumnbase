@@ -39,29 +39,51 @@ pub enum TokenKind {
     Keyword(Keyword),
     Query(QueryKeyword),
     Symbol(Symbol),
+    SDL(SDLKeyword),
     EOF,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum QueryKeyword {
-    Table,
     Query,
+    As,
 
     Select,
     Insert,
     Update,
     Delete,
-
-    Create,
-    Drop,
-    Alter,
     
     Where,
     Order,
     Limit,
     Offset,
     Exclude,
-    As,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum SDLKeyword {
+    Database,
+    Table,
+    Column,
+    Policy,
+    User,
+    Role,
+
+    Create,
+    Drop,
+    Alter,
+
+    Default,
+    Unique,
+    Required,
+
+    Key,
+    References,
+
+    Grant,
+    Revoke,
+    Connect,
+    Execute,
 }
 
 #[derive(Debug, PartialEq, Clone)]

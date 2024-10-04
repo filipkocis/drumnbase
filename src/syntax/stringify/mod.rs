@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::{basics::{Value, Column, column::{ColumnType, NumericType, TextType, TimestampType}, value::{NumericValue}}, auth::RlsAction};
 
-use super::ast::{Node, SDL, CreateSDL, Literal, Number, Statement, Type, Expression, Operator, Query, SelectQuery, InsertQuery, DeleteQuery, UpdateQuery};
+use super::ast::{Node, SDL, CreateSDL, Literal, Number, Statement, Type, Expression, Operator, Query, SelectQuery, InsertQuery, DeleteQuery, UpdateQuery, GrantSDL};
 
 /// Indentation helper
 fn spaces(indent: usize) -> String {
@@ -142,19 +142,7 @@ impl ToSchemaString for SDL {
             SDL::Create(create) => create.to_schema_string(indent),
             // SDL::Drop(drop) => drop.to_schema_string(indent),
             SDL::Drop(_) => Err("Drop not implemented for schema string".to_string()),
-            SDL::Grant { object, object_name, actions, table, to } => {
-                let actions = actions.join(", ");
-
-                let mut schema = format!("{}grant {} {} {}", spaces(indent), actions, object, object_name);
-
-                if let Some(table) = table {
-                    schema.push_str(&format!(" for {}", table));
-                }
-
-                schema.push_str(&format!(" for {}", to));
-
-                Ok(schema)
-            }
+            SDL::Grant(grant) => grant.to_schema_string(indent),
         } 
     }
 }
@@ -186,7 +174,7 @@ impl ToSchemaString for CreateSDL {
                 };
 
                 let node = blockify(&policy.condition).to_schema_string(indent)?.trim().to_owned();
-                format!("{}create policy \"{}\" for {}.{} {}", spaces, policy.name, table, action, node)
+                format!("{}create policy {:?} for {}.{} {}", spaces, policy.name, table, action, node)
             }
             CreateSDL::Role { name } => format!("{}create role {}", spaces, name),
             CreateSDL::User { name, password, is_superuser } => {
@@ -573,5 +561,27 @@ impl ToSchemaString for DeleteQuery {
         }
 
         Ok(schema)
+    }
+}
+
+impl ToSchemaString for GrantSDL {
+    fn to_schema_string(&self, indent: usize) -> Result<String, String> {
+        let s = match self {
+            GrantSDL::Action { object, object_name, actions, table, to } => {
+                let actions = actions.join(", ");
+
+                let mut schema = format!("grant {} {} {}", actions, object, object_name);
+
+                if let Some(table) = table {
+                    schema.push_str(&format!(" for {}", table));
+                }
+
+                schema.push_str(&format!(" for {}", to));
+                schema
+            },
+            GrantSDL::Role { name, to } => format!("grant role {} for {}", name, to)
+        };
+
+        Ok(format!("{}{}", spaces(indent), s))
     }
 }

@@ -1,4 +1,4 @@
-use crate::basics::Value;
+use crate::{basics::{Value, Column}, auth::{RlsPolicy, RlsAction, Privilege}};
 
 #[derive(Debug, Clone)]
 pub enum Node {
@@ -8,6 +8,7 @@ pub enum Node {
     Expression(Expression),
     Query(Query),
     Value(Value),
+    SDL(SDL),
 }
 
 #[derive(Debug, Clone)]
@@ -118,4 +119,39 @@ pub enum Operator {
     
     Assign, AddAssign, SubAssign, MulAssign, DivAssign, ModAssign, PowAssign,
     Inc, Dec,
+}
+
+#[derive(Debug, Clone)]
+pub enum SDL {
+    Create(CreateSDL),
+    Drop(DropSDL), 
+    Grant(GrantSDL),
+    // Revoke { object: String, from: String, privileges: Vec<Privilege> },
+}
+
+#[derive(Debug, Clone)]
+pub enum CreateSDL {
+    Database { name: String },
+    Table { name: String, columns: Vec<Column> },
+    RlsPolicy { table: String, policy: Box<RlsPolicy> },
+    Role { name: String },
+    User { name: String, password: String, is_superuser: bool },
+}
+
+#[derive(Debug, Clone)]
+// TODO: rework this
+pub enum DropSDL {
+    Database { name: String },
+    Column { name: String, table: String },
+    Table { name: String },
+    RlsPolicy { name: String },
+    Role { name: String },
+    User { name: String },
+}
+
+#[derive(Debug, Clone)]
+pub enum GrantSDL {
+    Role { name: String, to: String },
+    // TODO: rework this
+    Action { object: String, object_name: String, actions: Vec<String>, table: Option<String>, to: String, }
 }
