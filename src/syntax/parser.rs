@@ -654,9 +654,9 @@ impl Parser {
 
         let literal = if let TokenKind::Literal(ref literal) = token.kind {
             match literal {
-                Literal::Int(value) => ast::Literal::Number(Number::Int(value.parse().unwrap())),            
-                Literal::Float(value) => ast::Literal::Number(Number::Float(value.parse().unwrap())),            
-                Literal::String(value) => ast::Literal::String(value.clone()),            
+                Literal::Int(value) => ast::Literal::Number(Number::Int(value.parse().unwrap())),
+                Literal::Float(value) => ast::Literal::Number(Number::Float(value.parse().unwrap())),
+                Literal::String(value) => ast::Literal::String(value.clone()),
             }
         } else {
             Err(self.expected("literal"))?
@@ -789,8 +789,8 @@ impl Parser {
     fn query(&mut self) -> Result<Node, ParserError> {
         self.expect(TokenKind::Query(QueryKeyword::Query))?;
         
-        let table_name = self.identifier_name()?;
-        
+        let table_name = self.string_or_identifier()?;
+
         match self.current() {
             Some(token) => match token.kind {
                 TokenKind::Query(QueryKeyword::Select) => self.select_query(table_name),
@@ -801,6 +801,19 @@ impl Parser {
             },
             _ => Err(self.expected("query type"))?
         }
+    }
+
+    fn string_or_identifier(&mut self) -> Result<String, ASTError> {
+        let token = self.current_token("string or identifier")?;
+
+        let value = match &token.kind {
+            TokenKind::Literal(Literal::String(value)) |
+            TokenKind::Identifier(value) => value.clone(),
+            _ => Err(self.expected("string or identifier"))? 
+        };
+        self.advance();
+
+        Ok(value)
     }
 
     fn delete_query(&mut self, table_name: String) -> Result<Node, ParserError> {
@@ -946,12 +959,7 @@ impl Parser {
     fn query_order(&mut self) -> Result<Box<Node>, ASTError> {
         self.expect(TokenKind::Query(QueryKeyword::Order))?;
         
-        let column = match self.current() {
-            Some(Token { kind: TokenKind::Literal(Literal::String(column)), .. }) |
-            Some(Token { kind: TokenKind::Identifier(column), .. }) => column.clone(),
-            _ => Err(self.expected("column name"))?
-        };
-        self.advance();
+        let column = self.string_or_identifier()?;
     
         let order = match self.current() {
             Some(Token { kind: TokenKind::Identifier(value), .. }) => {
