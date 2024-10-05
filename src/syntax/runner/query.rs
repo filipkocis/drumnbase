@@ -253,7 +253,7 @@ impl Runner {
         // check if required columns are present
         let missing_columns = table.columns.iter().filter_map(|column| {
             if !column_names.contains(&column.name.as_ref()) 
-                && column.not_null && column.default.is_none() {
+                && column.not_null && column._default.is_none() {
                 Some(column.name.clone())
             } else {
                 None
@@ -270,10 +270,13 @@ impl Runner {
         for (i, column) in table.columns.iter().enumerate() {
             let value = match key_values.iter().find(|(key, _)| *key == &column.name) {
                 Some((_, value)) => value.clone(),
-                None => match column.default {
+                None => match column._default {
                     Some(ref default) => {
-                        let value = column.data_type.parse(default)?;  
-                        value
+                        match self.run(default, ctx) {
+                            Ok(Some(value)) => value,
+                            Ok(None) => return Err("Default value must return a value".to_string()),
+                            Err(err) => return Err(format!("Error evaluating default value: {}", err))
+                        }
                     },
                     None => match column.not_null {
                         true => return Err(format!("Column '{}' does not allow NULL values", column.name)),
