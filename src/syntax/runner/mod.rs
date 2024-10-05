@@ -1,6 +1,6 @@
 use std::{cell::RefCell, sync::{Arc, RwLock}};
 
-use crate::{basics::Value, database::Database, lock::UnsafeRwLock};
+use crate::{basics::Value, database::Database, lock::UnsafeRwLock, syntax::{parser::Parser, tokenizer::Tokenizer}};
 
 use super::{ast::{Node}, context::Ctx};
 
@@ -48,6 +48,18 @@ impl Runner {
         }
     }
 
+    /// Same as 'run' but takes a raw string input which it tokenizes and parses beforehand
+    ///
+    /// # Note
+    /// This is useful for running code where the input is a known string, like in tests or
+    /// built-in functions
+    pub fn run_raw(&self, input: &str, ctx: &Ctx) -> RunnerResult {
+        let tokens = Tokenizer::new(input.to_string()).tokenize()?;
+        let ast = Parser::new(tokens).parse().map_err(|e| format!("{:?}", e))?;
+        self.run(&ast, ctx)
+    }
+
+    /// Main entry point for running code execution
     pub fn run(&self, ast: &Node, ctx: &Ctx) -> RunnerResult {
         match ast {
             Node::Literal(value) => self.eval_literal(value, ctx),
