@@ -1,10 +1,8 @@
 mod new;
-mod builder;
 mod run;
 mod loader;
 mod creator;
 
-// pub use builder::DatabaseBuilder;
 pub use loader::DatabaseBuilder;
 pub use run::{QueryResult, Run, RunOptions};
 
