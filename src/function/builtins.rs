@@ -22,6 +22,7 @@ impl Database {
             random(),
             random_range(),
             format(),
+            seq(),
         ];
 
         for function in functions {
@@ -301,6 +302,64 @@ fn format() -> Function {
         }
 
         Ok(Some(Value::Text(result)))
+    };
+
+    Function::built_in(name, params, return_type, body)
+}
+
+fn seq() -> Function {
+    let name = "seq";
+    let params = vec![("table", Type::String), ("column", Type::String)];
+    let return_type = Type::Int;
+
+    let body = |db: DatabaseType, args: &[Value], ctx: &Ctx, runner: &Runner| {
+        let table = args.get(0).ok_or("Expected argument 'table'")?;
+        let column = args.get(1);
+
+        let table = match table {
+            Value::Text(t) => t.to_string(),
+            _ => return Err("Expected argument 'table' to be of type 'text'".to_string())
+        };
+        let column = match column {
+            Some(Value::Text(t)) => t.to_string(),
+            None => "id".to_string(),
+            _ => return Err("Expected argument 'column' to be of type 'text'".to_string())
+        };
+
+        let db = db.read();
+        let table = db.get_table(&table).ok_or(&format!("Table '{}' not found", table))?;
+        let column = table.get_column(&column).ok_or(&format!("Column '{}' not found", column))?;
+
+        let query = format!("query {} select {} order {} desc limit 1", table.name, column.name, column.name);
+        let max_id = match runner.run_raw(&query, ctx) {
+            // array of rows
+            Ok(Some(Value::Array(a))) => match a.get(0) {
+                // array of selected values in the row
+                Some(Value::Array(a)) => match a.get(0) {
+                    Some(Value::Numeric(n)) => Some(n.to_i128()),
+                    Some(_) => return Err("Expected query result to return a number".to_string()),
+                    None => None,
+                },
+                Some(_) => return Err("Expected query result to return an array of rows".to_string()),
+                None => None,
+            }
+            Ok(_) => return Err("Expected query to return an array".to_string()),
+            Err(e) => return Err(e),
+        };
+
+        if max_id == Some(i64::MAX as i128) {
+            return Err("Sequence overflow".to_string());
+        }
+
+        let new_id = max_id.unwrap_or(-1) + 1;
+        let number = if new_id >= 0 {
+            Value::Numeric(NumericValue::IntU64(new_id as u64)) 
+        } else {
+            Value::Numeric(NumericValue::IntI64(new_id as i64))
+        };
+
+        let value = column.transform_value(&number)?;
+        Ok(Some(value))
     };
 
     Function::built_in(name, params, return_type, body)
