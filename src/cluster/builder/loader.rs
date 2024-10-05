@@ -73,6 +73,8 @@ impl ClusterBuilder {
             let name = row[1].as_text().ok_or("invalid role name")?; 
             // TODO: implement field description
 
+            let role = roles.entry(id).or_insert(Role::new(name));
+
             let query = format!("query privileges select * where role_id == {}", id);
             let result = Self::run_query(&query, "privileges", internal.clone(), settings)?;
 
@@ -84,7 +86,6 @@ impl ClusterBuilder {
                 let action = row[4].as_text().ok_or("invalid privilege action")?;
                 let extra = row[5].as_text().map(|x| x.as_str());
 
-                let role = roles.entry(id).or_insert(Role::new(name));
                 let privilege = Privilege::from_fields(object, object_name, action, extra)?;
                 role.add_privilege(privilege);
             }
