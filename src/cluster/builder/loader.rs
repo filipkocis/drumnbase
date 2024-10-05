@@ -24,7 +24,7 @@ impl ClusterBuilder {
         // load databases
         for name in directories {
             log::info(&format!("loading database '{}' into cluster", name));
-            let db = DatabaseBuilder::new().name(&name).root_dir(path).load()?;
+            let db = DatabaseBuilder::new(&name, path).load()?;
             let db = Arc::new(RwLock::new(db));
             databases.insert(name.clone(), db.clone()); 
 
@@ -43,6 +43,8 @@ impl ClusterBuilder {
         let roles = Self::load_roles(internal.clone(), &settings)?;
         let users = Self::load_users(internal.clone(), &roles, &settings)?;
 
+        let roles = roles.into_iter().map(|(_, role)| (role.name.clone(), role)).collect();
+
         let cluster = Cluster {
             databases,
             internal,
@@ -55,40 +57,36 @@ impl ClusterBuilder {
         Ok(cluster)
     }
 
-    fn load_roles(internal: Arc<RwLock<Database>>, settings: &ClusterSettings) -> Result<HashMap<String, Role>, String> {
+    fn load_roles(internal: Arc<RwLock<Database>>, settings: &ClusterSettings) -> Result<HashMap<u64, Role>, String> {
         log::info("loading internal roles");
+        let result = Self::run_query("query roles select *", "roles", internal.clone(), settings)?;
 
-        let query = "query roles select *".to_owned();
-        let options = Cluster::root_run_options(internal.clone(), settings);
-        let query_result = Database::run(internal, query, Rc::new(options))
-            .or(Err("failed to query roles".to_owned()))?; 
-        let mut roles = HashMap::new();
-        
         // parse roles
-        match query_result.data {
-            Value::Array(array) => {
-                for row in array {
-                    let row = row.as_array().ok_or("invalid role row")?;
+        let mut roles = HashMap::new();
+        for row in result {
+            let row = row.as_array().ok_or("invalid role row")?;
 
-                    // TODO: dont use indexes, but use column table index
-                    // TODO: when variable docs or joins are implemented, use them here
-                    // TODO: implement row.get("name")
-                    let name = row[0].as_text().ok_or("invalid role name")?; 
-                    let object = row[1].as_text().ok_or("invalid privilege object")?;
-                    let object_name = row[2].as_text().ok_or("invalid privilege name")?;
-                    let action = row[3].as_text().ok_or("invalid privilege action")?;
-                    let extra = row[4].as_text().map(|x| x.as_str());
+            // TODO: dont use indexes, but use column table index
+            // TODO: when variable docs or joins are implemented, use them here
+            // TODO: implement row.get("name")
+            let id = row[0].as_numeric().ok_or("invalid role id")?.to_i128() as u64;
+            let name = row[1].as_text().ok_or("invalid role name")?; 
+            // TODO: implement field description
 
-                    let role = roles.entry(name.to_owned()).or_insert(Role::new(name));
-                    let privilege = Privilege::from_fields(object, object_name, action, extra)?;
+            let query = format!("query privileges select * where role_id == {}", id);
+            let result = Self::run_query(&query, "privileges", internal.clone(), settings)?;
 
-                    role.add_privilege(privilege);
-                }
-            },
-            _ => {
-                let err_msg = "invalid roles query result".to_owned();
-                log::error(&err_msg);
-                return Err(err_msg)
+            for row in result {
+                let row = row.as_array().ok_or("invalid privilege row")?;
+
+                let object = row[2].as_text().ok_or("invalid privilege object")?;
+                let object_name = row[3].as_text().ok_or("invalid privilege name")?;
+                let action = row[4].as_text().ok_or("invalid privilege action")?;
+                let extra = row[5].as_text().map(|x| x.as_str());
+
+                let role = roles.entry(id).or_insert(Role::new(name));
+                let privilege = Privilege::from_fields(object, object_name, action, extra)?;
+                role.add_privilege(privilege);
             }
         }
 
@@ -96,54 +94,41 @@ impl ClusterBuilder {
         Ok(roles)
     }
 
-    fn load_users(internal: Arc<RwLock<Database>>, roles: &HashMap<String, Role>, settings: &ClusterSettings) -> Result<HashMap<String, User>, String> {
+    fn load_users(internal: Arc<RwLock<Database>>, roles: &HashMap<u64, Role>, settings: &ClusterSettings) -> Result<HashMap<String, User>, String> {
         log::info("loading internal users");
+        let result = Self::run_query("query users select *", "users", internal.clone(), settings)?;
 
-        let query = "query users select *".to_owned();
-        let options = Cluster::root_run_options(internal.clone(), settings);
-        let query_result = Database::run(internal, query, Rc::new(options))
-            .or(Err("failed to query users".to_owned()))?; 
+        // parse users
         let mut users = HashMap::new();
-        
-        // parse roles
-        match query_result.data {
-            Value::Array(array) => {
-                for row in array {
-                    let row = row.as_array().ok_or("invalid role row")?;
+        for row in result {
+            let row = row.as_array().ok_or("invalid user row")?;
 
-                    // TODO: dont use indexes, but use column table index
-                    // TODO: when variable docs or joins are implemented, use them here
-                    // TODO: implement row.get("name")
-                    let name = row[0].as_text().ok_or("invalid user name")?; 
-                    let hash = row[1].as_text().ok_or("invalid user hash")?;
-                    let role_name = row[2].as_text().ok_or("invalid role name");
-                    let is_superuser = row[3].as_bool().ok_or("invalid user is_superuser")?;
+            // TODO: dont use indexes, but use column table index
+            // TODO: when variable docs or joins are implemented, use them here
+            // TODO: implement row.get("name")
+            let id = row[0].as_numeric().ok_or("invalid user id")?.to_i128() as u64; 
+            let name = row[1].as_text().ok_or("invalid user name")?; 
+            let hash = row[2].as_text().ok_or("invalid user hash")?;
+            let is_superuser = row[3].as_bool().ok_or("invalid user is_superuser")?;
 
-                    let user = users.entry(name.to_owned()).or_insert(User::new(name, hash));
+            let user = users.entry(name.to_owned()).or_insert(User::new(name, hash));
+            if is_superuser {
+                user.is_superuser = true;
+            }
 
-                    if is_superuser {
-                        user.is_superuser = true;
-                    }
+            let query = format!("query user_roles select * where user_id == {}", id);
+            let result = Self::run_query(&query, "user_roles", internal.clone(), settings)?;
 
-                    if role_name.is_err() && row[2] == Value::Null { continue }
-                    let role_name = role_name?;
+            for row in result {
+                let row = row.as_array().ok_or("invalid user_role row")?;
 
-                    if let Some(role) = roles.get(role_name) {
-                        user.add_role(role.clone());
-                    } else {
-                        let err_msg = format!("role '{}' not found", role_name);
-                        log::error(&err_msg);
-                        return Err(err_msg)
-                    }
-                }
-            },
-            _ => {
-                let err_msg = "invalid users query result".to_owned();
-                log::error(&err_msg);
-                return Err(err_msg)
+                let role_id = row[2].as_numeric().ok_or("invalid user_role role_id")?.to_i128() as u64;
+                let role = roles.get(&role_id).ok_or("role from user_roles not found")?;
+
+                user.add_role(role.clone());
             }
         }
-
+            
         if !users.contains_key(Self::INTERNAL_SUPERUSER_NAME) {
             let err_msg = "internal superuser not found".to_owned();
             log::error(&err_msg);
@@ -152,5 +137,33 @@ impl ClusterBuilder {
 
         log::success("users loaded");
         Ok(users)
+    }
+
+    /// Helper function to run a query and extract data from it's result
+    ///
+    /// 'what' is a description of the item we are querying, used for error messages
+    fn run_query(query: &str, what: &str, internal: Arc<RwLock<Database>>, settings: &ClusterSettings) -> Result<Vec<Value>, String> {
+        let options = Cluster::root_run_options(internal.clone(), settings);
+        let query_result = Database::run(internal, query.to_string(), Rc::new(options))
+            .or(Err(format!("failed to query {}", what)))?; 
+
+        let result;
+        
+        match query_result.data {
+            Value::Array(array) => {
+                for row in &array {
+                    row.as_array().ok_or(&format!("invalid {} row", what))?;
+                }
+
+                result = array;
+            },
+            _ => {
+                let msg = format!("invalid {} query result", what);
+                log::error(&msg);
+                return Err(msg)
+            }
+        }
+
+        Ok(result)
     }
 }
