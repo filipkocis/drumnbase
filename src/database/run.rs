@@ -41,7 +41,10 @@ pub trait Run {
 impl Run for Database {
     fn run(database: Arc<RwLock<Database>>, input: String, options: Rc<RunOptions>) -> Result<QueryResult, String> {
         let tokens = Tokenizer::new(input).tokenize()?;
-        let ast = Parser::new(tokens).parse().or_else(|_| Err("failed to parse".to_string()))?;
+        let ast = Parser::new(tokens).parse().or_else(|e| { 
+            let error = e.errors().get(0).ok_or("ParserError is empty after parser returned an error")?;
+            Err(format!("{} at {:?}", error.message(), error.token()))
+        })?;
         let runner = Runner::new(database);
         let ctx = RunnerContext::new_ctx(options);
 
