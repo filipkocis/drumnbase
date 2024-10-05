@@ -10,9 +10,13 @@ pub struct QueryResult {
 }
 
 pub struct RunOptions {
+    // additional runner context
     pub cluster_user: Rc<User>,
     pub auth_user: Rc<User>,
     pub cluster: Arc<RwLock<Cluster>>,
+
+    // runner options
+    pub is_schema: bool,
 }
 
 impl RunOptions {
@@ -20,7 +24,8 @@ impl RunOptions {
         Self {
             cluster_user,
             auth_user,
-            cluster
+            cluster,
+            is_schema: false,
         }
     }
 

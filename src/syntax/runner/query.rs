@@ -4,6 +4,10 @@ use super::{Runner, Ctx, RunnerResult};
 
 impl Runner {
     pub(super) fn eval_query(&self, query: &Query, ctx: &Ctx) -> RunnerResult {
+        if ctx.is_schema() {
+            return Err("Invalid schema, cannot run queries in schema context".to_string())
+        }
+
         let ctx = &Ctx::scoped(ctx.clone());
 
         let result = match query {

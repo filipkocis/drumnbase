@@ -177,4 +177,8 @@ impl<'a> RunnerContext<'a> {
     pub fn cluster(&self) -> &Arc<RwLock<Cluster>> {
         &self.options.cluster
     }
+
+    pub fn is_schema(&self) -> bool {
+        self.options.is_schema
+    }
 }
