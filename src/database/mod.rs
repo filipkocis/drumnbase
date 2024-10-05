@@ -1,9 +1,9 @@
 mod new;
+mod builder;
 mod run;
-mod loader;
 mod creator;
 
-pub use loader::DatabaseBuilder;
+pub use builder::DatabaseBuilder;
 pub use run::{QueryResult, Run, RunOptions};
 
 use std::{collections::HashMap, fs::File, sync::{Arc, RwLock}};
