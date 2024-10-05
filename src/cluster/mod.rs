@@ -6,7 +6,7 @@ pub use settings::ClusterSettings;
 
 use std::{collections::HashMap, sync::{Arc, RwLock}, rc::Rc};
 
-use crate::{database::{Database, RunOptions, Run, QueryResult, DatabaseBuilder}, auth::{Role, User, Hashish}, utils::is_valid_name, syntax::context::Ctx};
+use crate::{database::{Database, RunOptions, Run, QueryResult, DatabaseBuilder}, auth::{Role, User, Hashish}, utils::is_valid_name, syntax::context::Ctx, basics::Value};
 
 pub struct Cluster {
     pub databases: HashMap<String, Arc<RwLock<Database>>>,
@@ -132,8 +132,12 @@ impl Cluster {
         }
 
         if !ctx.is_schema() {
-            // TODO: temporary update, change later
-            let query = format!("query users update role_name:'{}' where name == {}", role, to);
+            let user_id = self.query_and_extract_single(format!("query users select id where name == '{}'", to))?
+                .as_numeric().ok_or("User id is not numeric")?.to_i128();
+            let role_id = self.query_and_extract_single(format!("query roles select id where name == '{}'", role))?
+                .as_numeric().ok_or("Role id is not numeric")?.to_i128();
+
+            let query = format!("query user_roles insert role_id:{} user_id:{}", role_id, user_id);
             self.run_as_root(query)?;
         }
 
@@ -141,5 +145,30 @@ impl Cluster {
         self.users.get_mut(to).unwrap().add_role(role);
 
         Ok(())
+    }
+
+    /// Helper function to run a query which returns a single value in a single row
+    fn query_and_extract_single(&self, query: String) -> Result<Value, String> {
+        let result = self.run_as_root(query)?;
+
+        match result.data {
+            Value::Array(a) => {
+                if a.len() != 1 {
+                    return Err("Query did not return a single row".to_string())
+                }
+
+                match &a[0] {
+                    Value::Array(a) => {
+                        if a.len() != 1 {
+                            return Err("Query did not return a row with a single value".to_string())
+                        }
+
+                        return Ok(a[0].clone())
+                    },
+                    _ => return Err("Query did not return a row".to_string())
+                }
+            }
+            _ => Err("Query did not return an array of rows".to_string()) 
+        }
     }
 }
