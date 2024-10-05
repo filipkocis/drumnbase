@@ -42,3 +42,32 @@ pub enum ColumnType {
     Enum,
     UUID,
 }
+
+impl ColumnType {
+    pub fn len(&self) -> u32 {
+        match self {
+            ColumnType::Numeric(n) => match n {
+                NumericType::IntU8 => 1,
+                NumericType::IntU16 => 2,
+                NumericType::IntU32 => 4,
+                NumericType::IntU64 => 8,
+
+                NumericType::IntI8 => 1,
+                NumericType::IntI16 => 2,
+                NumericType::IntI32 => 4,
+                NumericType::IntI64 => 8,
+
+                NumericType::Float32 => 4,
+                NumericType::Float64 => 8,
+            },
+            ColumnType::Text(t) => match t {
+                TextType::Char => 1,
+                TextType::Variable => todo!("variable length text"),
+                TextType::Fixed(len) => *len,
+            },
+            ColumnType::Timestamp(_) => 8,
+            ColumnType::Boolean => 1,
+            _ => todo!("column type len for {:?}", self),
+        }
+    }
+}

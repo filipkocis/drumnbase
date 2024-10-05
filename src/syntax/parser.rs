@@ -1120,6 +1120,7 @@ impl Parser {
 
         let data_type = self.column_type_declaration()?;
         let mut column = Column::new(&name, data_type);
+        column.length = column.data_type.len();
 
         while let Some(token) = self.current() {
             match token.kind {
