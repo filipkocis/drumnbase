@@ -57,7 +57,11 @@ impl Run for Database {
                     }
                     // _ => Err("wrong result type".to_string()),
                 },
-                None => Err("no result".to_string()),
+                // None => Err("no result".to_string()),
+                None => Ok(QueryResult {
+                    amount: 0,
+                    data: Value::Null,
+                })
             },
             Err(err) => Err(err.to_string())
         }
