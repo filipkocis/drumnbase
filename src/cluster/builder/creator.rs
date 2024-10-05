@@ -1,10 +1,11 @@
 use std::{path::Path, sync::{Arc, RwLock}, collections::HashMap, rc::Rc};
 
-use crate::{utils::{log, disk}, cluster::{Cluster, ClusterSettings}, database::{DatabaseBuilder, Database, Run, RunOptions}, auth::{User, Hashish}};
+use crate::{utils::{log, disk}, cluster::{Cluster, ClusterSettings}, database::{DatabaseBuilder, Database, Run}, auth::{User, Hashish}};
 
 use super::ClusterBuilder;
 
 impl ClusterBuilder {
+    /// Create a new cluster at self.path()
     pub fn create(&self, password: &str) -> Result<Cluster, String> {
         log::info(format!("creating cluster '{}'", self.name));
 
@@ -19,9 +20,8 @@ impl ClusterBuilder {
 
         disk::create_directory_all(&path)?;
 
-        let internal = Self::create_internal_database(&path)?;
-        let internal = Arc::new(RwLock::new(internal)); 
         let settings = ClusterSettings::new(&self.name, &path);
+        let internal = Self::create_internal_database(&path, &settings)?;
         let users = Self::add_default_users(internal.clone(), password, &settings)?;
 
         let mut databases = HashMap::new();
@@ -39,25 +39,23 @@ impl ClusterBuilder {
         Ok(cluster)
     }
 
-    fn create_internal_database(root_dir: &str) -> Result<Database, String> {
+    /// Create internal database for the cluster
+    fn create_internal_database(root_dir: &str, settings: &ClusterSettings) -> Result<Arc<RwLock<Database>>, String> {
         log::info("creating internal database");
 
         let internal_name = Self::INTERNAL_DB_NAME;
-        let schema_path = format!("{}/.temp-internal-schema", root_dir);
+        let internal_schema = Self::INTERNAL_DB_SCHEMA.to_owned();
 
-        disk::write_file(&schema_path, INTERNAL_DB_SCHEMA)?;
-        
-        let internal = DatabaseBuilder::new()
-            .name(internal_name)
-            .root_dir(root_dir)
-            .create(&schema_path)?;
-        
-        disk::remove_file(&schema_path)?;
+        let internal = DatabaseBuilder::new(internal_name, root_dir).create()?;
+        let internal = Arc::new(RwLock::new(internal));
+        let options = Cluster::root_run_options(internal.clone(), settings);
+        Database::run(internal.clone(), internal_schema, Rc::new(options))?;
         
         log::success("internal database created");
         Ok(internal)
     }
 
+    /// Add default cluster users to the internal database
     fn add_default_users(internal: Arc<RwLock<Database>>, superuser_password: &str, settings: &ClusterSettings) -> Result<HashMap<String, User>, String> {
         log::info("adding default users");
 
