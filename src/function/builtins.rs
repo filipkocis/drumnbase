@@ -1,6 +1,6 @@
 use std::{time::{SystemTime, UNIX_EPOCH}};
 
-use crate::{database::Database, syntax::ast::Type, basics::{Value, value::{TimestampValue, NumericValue}}, random::Random, lock::UnsafeRwLock};
+use crate::{database::Database, syntax::{ast::Type, context::Ctx, runner::Runner}, basics::{Value, value::{TimestampValue, NumericValue}}, random::Random, lock::UnsafeRwLock};
 
 use super::Function;
 
@@ -35,7 +35,7 @@ fn print() -> Function {
     let params = vec![("values", Type::Any)];
     let return_type = Type::Void;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let values = args.get(0).ok_or("Expected argument 'values'")?;
         print!("{}", values);
         Ok(None)
@@ -49,7 +49,7 @@ fn println() -> Function {
     let params = vec![("values", Type::Any)];
     let return_type = Type::Void;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let values = args.get(0).ok_or("Expected argument 'values'")?;
         println!("{}", values);
         Ok(None)
@@ -63,7 +63,7 @@ fn now() -> Function {
     let params = vec![];
     let return_type = Type::UInt;
 
-    let body = |_: DatabaseType, _: &[Value]| {
+    let body = |_: DatabaseType, _: &[Value], _: &Ctx, _: &Runner| {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
         Ok(Some(Value::Timestamp(TimestampValue::Milliseconds(now as u64))))
     };
@@ -76,7 +76,7 @@ fn floor() -> Function {
     let params = vec![("value", Type::Float)];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         match value {
             Value::Numeric(NumericValue::Float32(f))
@@ -95,7 +95,7 @@ fn ceil() -> Function {
     let params = vec![("value", Type::Float)];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         match value {
             Value::Numeric(NumericValue::Float32(f))
@@ -114,7 +114,7 @@ fn round() -> Function {
     let params = vec![("value", Type::Float), ("precision", Type::Int)];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         let precision = args.get(1).ok_or("Expected argument 'precision'")?;
         match (value, precision) {
@@ -138,7 +138,7 @@ fn abs() -> Function {
     let params = vec![("value", Type::Any)];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         match value {
             Value::Numeric(n)
@@ -155,7 +155,7 @@ fn sqrt() -> Function {
     let params = vec![("value", Type::Any)];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         match value {
             Value::Numeric(n) 
@@ -172,7 +172,7 @@ fn pow() -> Function {
     let params = vec![("base", Type::Any), ("exponent", Type::Any)];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let base = args.get(0).ok_or("Expected argument 'base'")?;
         let exponent = args.get(1).ok_or("Expected argument 'exponent'")?;
         match (base, exponent) {
@@ -193,7 +193,7 @@ fn len() -> Function {
     let params = vec![("value", Type::Any)];
     let return_type = Type::UInt;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let value = args.get(0).ok_or("Expected argument 'value'")?;
         match value {
             Value::Text(s) => Ok(Some(Value::Numeric(NumericValue::IntU64(s.len() as u64)))),
@@ -210,7 +210,7 @@ fn random() -> Function {
     let params = vec![];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, _: &[Value]| {
+    let body = |_: DatabaseType, _: &[Value], _: &Ctx, _: &Runner| {
         let random = Random::gen();
 
         Ok(Some(Value::Numeric(NumericValue::Float64(random))))
@@ -224,7 +224,7 @@ fn random_range() -> Function {
     let params = vec![("min", Type::Float), ("max", Type::Float)];
     let return_type = Type::Float;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let min = args.get(0).ok_or("Expected argument 'min'")?;
         let max = args.get(1).ok_or("Expected argument 'max'")?;
 
@@ -250,7 +250,7 @@ fn format() -> Function {
     let params = vec![("template", Type::String), ("values", Type::Array(Box::new(Type::Any)))];
     let return_type = Type::String;
 
-    let body = |_: DatabaseType, args: &[Value]| {
+    let body = |_: DatabaseType, args: &[Value], _: &Ctx, _: &Runner| {
         let template = args.get(0).ok_or("Expected argument 'template'")?;
         let values = args.get(1).ok_or("Expected argument 'values'")?;
         

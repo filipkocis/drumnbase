@@ -1,6 +1,4 @@
-use std::{sync::{Arc, RwLock}};
-
-use crate::{database::Database, basics::Value, syntax::ast::{Node, Type}, lock::UnsafeRwLock};
+use crate::{database::Database, basics::Value, syntax::{ast::{Node, Type}, context::Ctx, runner::Runner}, lock::UnsafeRwLock};
 
 mod builtins;
 
@@ -18,7 +16,7 @@ pub enum FunctionBody {
     Custom(Node),
 }
 
-type BuiltIn = fn(UnsafeRwLock<Database>, &[Value]) -> Result<Option<Value>, String>;
+type BuiltIn = fn(UnsafeRwLock<Database>, &[Value], ctx: &Ctx, runner: &Runner) -> Result<Option<Value>, String>;
 
 impl Function {
     pub fn new(name: String, params: Vec<(String, Type)>, return_type: Type, body: FunctionBody) -> Self {
@@ -48,9 +46,9 @@ impl Function {
         )
     }
 
-    pub fn call(&self, db: UnsafeRwLock<Database>, args: &[Value]) -> Result<Option<Value>, String> {
+    pub fn call(&self, db: UnsafeRwLock<Database>, args: &[Value], ctx: &Ctx, runner: &Runner) -> Result<Option<Value>, String> {
         match &self.body {
-            FunctionBody::BuiltIn(f) => f(db, args),
+            FunctionBody::BuiltIn(f) => f(db, args, ctx, runner),
             // TODO: Implement custom function call
             FunctionBody::Custom(_) => unimplemented!("Cannot call custom function directly")
         }

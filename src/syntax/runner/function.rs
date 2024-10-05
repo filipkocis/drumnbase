@@ -44,7 +44,7 @@ impl Runner {
         // TODO: add type checking for builtins
         let body = match &function.body {
             FunctionBody::Custom(body) => body,
-            FunctionBody::BuiltIn(function) => return function(self.database.clone(), &arguments),
+            FunctionBody::BuiltIn(function) => return function(self.database.clone(), &arguments, ctx, self),
         };
 
         // TODO: create a new context so the fn doesn't have access to the outer scope (?)
