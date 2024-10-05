@@ -28,7 +28,7 @@ impl Runner {
         }
 
         let mut database = self.database.write().map_err(|_| "Can't create rls when in read mode")?;
-        database.create_rls_policy(table, policy.clone())?;
+        database.create_rls_policy(table, policy.clone(), ctx)?;
 
         Ok(None)
     }
@@ -39,7 +39,7 @@ impl Runner {
         }
 
         let mut cluster = ctx.cluster().write().map_err(|_| "Can't create database when in read mode")?;
-        cluster.create_database(name)?;
+        cluster.create_database(name, ctx)?;
 
         Ok(None)
     }
@@ -53,7 +53,7 @@ impl Runner {
         table.columns = columns.to_vec();
 
         let mut database = self.database.write().map_err(|_| "Can't create table when in read mode")?;
-        database.create_table(table)?;
+        database.create_table(table, ctx)?;
         Ok(None)
     }
 
@@ -63,7 +63,7 @@ impl Runner {
         }
 
         let mut cluster = ctx.cluster().write().map_err(|_| "Can't create role when in read mode")?;
-        cluster.create_role(name)?;
+        cluster.create_role(name, ctx)?;
 
         Ok(None)
     }
@@ -74,7 +74,7 @@ impl Runner {
         }
 
         let mut cluster = ctx.cluster().write().map_err(|_| "Can't create user when in read mode")?;
-        cluster.create_user(name, password, is_superuser)?;
+        cluster.create_user(name, password, is_superuser, ctx)?;
 
         Ok(None)
     }
@@ -93,7 +93,7 @@ impl Runner {
         }
 
         let mut cluster = ctx.cluster().write().map_err(|_| "Can't grant role when in read mode")?;
-        cluster.grant_role(name, to)?;
+        cluster.grant_role(name, to, ctx)?;
 
         Ok(None)
     }
