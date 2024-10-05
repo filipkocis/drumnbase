@@ -75,18 +75,3 @@ impl ClusterBuilder {
         Ok(users)
     }
 }
-
-const INTERNAL_DB_SCHEMA: &str = r#"
-table users create
-table users column name add fixed(64) not_null unique
-table users column hash add fixed(200) not_null unique
-table users column role_name add fixed(64)
-table users column is_superuser add bool default=false
-
-table roles create
-table roles column name add fixed(64) not_null
-table roles column object add fixed(64) not_null
-table roles column object_name add fixed(64) not_null
-table roles column action add fixed(64) not_null
-table roles column extra add fixed(64)
-"#;
