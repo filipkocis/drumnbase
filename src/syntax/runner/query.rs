@@ -20,7 +20,7 @@ impl Runner {
         result
     }
 
-    fn eval_policies(&self, policies: &[&Node], ctx: &Ctx) -> Result<bool, String> {
+    pub(super) fn eval_policies(&self, policies: &[&Node], ctx: &Ctx) -> Result<bool, String> {
         if policies.len() == 0 { 
             return Ok(true)
         }
