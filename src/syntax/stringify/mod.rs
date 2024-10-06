@@ -401,6 +401,12 @@ impl ToSchemaString for Expression {
                 schema.push(')');
                 schema
             },
+            Expression::Index { object, index } => {
+                format!("{}[{}]", object.to_schema_string(indent)?.trim(), index.to_schema_string(indent)?.trim())
+            },
+            Expression::Member { object, member } => {
+                format!("{}.{}", object.to_schema_string(indent)?.trim(), escapify(member))
+            },
             Expression::Literal(literal) => literal.to_schema_string(indent)?,
 
             _ => Err("Unsupported expression for schema string".to_string())?,
