@@ -33,10 +33,11 @@ impl Runner {
             for row_b in table_b.data.iter() {
                 if row_b.is_deleted() { continue }
 
-                let condition_result = self.run(on, &ctx)?;
-                if !matches!(condition_result, Some(Value::Boolean(true))) {
-                    continue
-                }
+                match self.run(on, &ctx)? {
+                    Some(Value::Boolean(true)) => (),
+                    Some(Value::Boolean(false)) => continue,
+                    _ => return Err("Join condition must return a boolean value".to_string()),
+                };
 
                 let mut combined_row = row_a.clone();
                 combined_row.push(row_b);
