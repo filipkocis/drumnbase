@@ -566,6 +566,9 @@ impl Parser {
             // _ => todo!("expression")
             _ => Err(self.expected("expression"))?
         };
+        
+        // expression can be indexed or have a member access
+        let node = self.encapsulate_index_or_member(node)?;
 
         // expression can be followed by increment or decrement operator
         if let Some(token) = self.current() {
@@ -595,6 +598,29 @@ impl Parser {
         }
 
         Ok(node)
+    }
+
+    fn encapsulate_index_or_member(&mut self, node: Node) -> Result<Node, ParserError> {
+        let mut current = node;
+
+        while let Some(token) = self.current() {
+            match token.kind {
+                TokenKind::Symbol(Symbol::LeftBracket) => {
+                    self.advance();
+                    let index = self.expression()?;
+                    self.expect(TokenKind::Symbol(Symbol::RightBracket))?;
+                    current = Node::Expression(Expression::Index { object: Box::new(current), index: Box::new(index) }); 
+                },
+                TokenKind::Symbol(Symbol::Period) => {
+                    self.advance();
+                    let property = self.identifier_name()?;
+                    current = Node::Expression(Expression::Member { object: Box::new(current), member: property });
+                },
+                _ => break
+            }
+        }
+
+        Ok(current)
     }
 
     fn assignment(&mut self, left: Node) -> Result<Node, ParserError> {
