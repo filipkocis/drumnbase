@@ -41,9 +41,12 @@ impl Runner {
 
         let column_map = table_b.get_column_map(&table_b.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
+        ctx.set_joined_tables(&table_a.tables);
         let policies = table_b.police(&ctx.cluster_user(), RlsAction::Select);
 
         for row_a in table_a.data.iter() {
+            ctx.set_joined_row(row_a);
+
             let mut match_found = false;
             for row_b in table_b.data.iter() {
                 if row_b.is_deleted() { continue }

@@ -1,6 +1,6 @@
-use std::{rc::Rc, cell::RefCell, collections::HashMap, borrow::Cow, sync::{Arc, RwLock}};
+use std::{rc::Rc, cell::RefCell, collections::HashMap, borrow::Cow, sync::{Arc, RwLock}, ptr};
 
-use crate::{basics::{Row, Value}, auth::User, database::RunOptions, cluster::Cluster};
+use crate::{basics::{Row, Value, Table}, auth::User, database::RunOptions, cluster::Cluster};
 
 pub type Ctx<'a> = Rc<RunnerContext<'a>>;
 type Scope<'a> = Rc<RefCell<HashMap<String, ScopeValue<'a>>>>;
@@ -19,7 +19,7 @@ pub struct RunnerContext<'a> {
     current_column_map: Option<HashMap<String, usize>>,
 
     // row representation of 'joined rows'
-    pub current_unsafe_row: RefCell<Vec<*const Row>>,
+    pub current_unsafe_row: RefCell<*const Vec<*const Row>>,
     // key: (table_name, column_name) -> (table_index, column_index)
     pub current_unsafe_column_map: RefCell<HashMap<(String, String), (usize, usize)>>,
 
@@ -165,7 +165,7 @@ impl<'a> RunnerContext<'a> {
             options,
             parent: None,
 
-            current_unsafe_row: RefCell::new(Vec::new()),
+            current_unsafe_row: RefCell::new(ptr::null()),
             current_unsafe_column_map: RefCell::new(HashMap::new()),
         }
     }
@@ -192,13 +192,23 @@ impl<'a> RunnerContext<'a> {
 }
 
 impl<'a> RunnerContext<'a> {
+    /// Get the row value based on member access in select query 
     pub fn get_from(&self, table: &str, column: &str) -> Result<&Value, String> {
         let map = self.current_unsafe_column_map.borrow();
         let key = (table.to_string(), column.to_string());
 
         if let Some((table_index, column_index)) = map.get(&key) {
-            let joined_row = self.current_unsafe_row.borrow();
+            let unsafe_joined_row = *self.current_unsafe_row.borrow();
+            if unsafe_joined_row.is_null() {
+                return Err("No joined row found".to_string())
+            }
+
+            let joined_row = unsafe { &*unsafe_joined_row };
             let unsafe_row = joined_row[*table_index];
+            if unsafe_row.is_null() {
+                return Ok(&Value::Null)
+            }
+
             let row = unsafe { &*unsafe_row };
             let value = row.get(*column_index).unwrap();
 
@@ -206,5 +216,23 @@ impl<'a> RunnerContext<'a> {
         }
 
         Err(format!("Column '{}' not found in table '{}'", column, table))
+    }
+
+    pub fn set_joined_row(&self, row: &Vec<*const Row>) {
+        *self.current_unsafe_row.borrow_mut() = row;
+    }
+
+    pub fn set_joined_tables(&self, tables: &Vec<*const Table>) {
+        let mut map = HashMap::new();
+
+        for (table_index, table) in tables.iter().enumerate() {
+            let table = unsafe { &*(*table) };
+
+            for (column_index, column) in table.columns.iter().enumerate() {
+                map.insert((table.name.clone(), column.name.clone()), (table_index, column_index));
+            }
+        }
+
+        *self.current_unsafe_column_map.borrow_mut() = map;
     }
 }
