@@ -36,8 +36,7 @@ impl Runner {
 
     fn apply_join(&self, table_a: UnsafeJoinedTables, table_b: &Table, join_type: &JoinType, on: &Node, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
         let mut output_table = UnsafeJoinedTables::new();
-        let mut matched_b_rows = HashSet::new();
-        let mut table_b_data = vec![];
+        let mut unmatched_rows = HashSet::new();
 
         let column_map = table_b.get_column_map(&table_b.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
@@ -57,16 +56,16 @@ impl Runner {
                     continue
                 }
 
-                if *join_type == JoinType::Right || *join_type == JoinType::Full {
-                    // Push rows which have passed all checks (rls, deleted), so that we do not
-                    // need to check them again in the bottom loop
-                    table_b_data.push(row_b);
-                }
-
                 // check if the join condition is true
                 match self.run(on, &ctx)? {
                     Some(Value::Boolean(true)) => (),
-                    Some(Value::Boolean(false)) => continue,
+                    Some(Value::Boolean(false)) => {
+                        if *join_type == JoinType::Right || *join_type == JoinType::Full {
+                            // Push rows which have passed all checks (rls, deleted), so that we do not
+                            // need to check them again in the bottom loop
+                            unmatched_rows.insert(row_b as *const Row);
+                        }
+                    },
                     _ => return Err("Join condition must return a boolean value".to_string()),
                 };
 
@@ -75,10 +74,6 @@ impl Runner {
 
                 output_table.data.push(combined_row);
                 match_found = true;
-
-                if *join_type == JoinType::Full || *join_type == JoinType::Right {
-                    matched_b_rows.insert(row_b as *const Row);
-                }
             }
 
             if !match_found && (*join_type == JoinType::Left || *join_type == JoinType::Full) {
@@ -89,11 +84,7 @@ impl Runner {
         }
 
         if *join_type == JoinType::Right || *join_type == JoinType::Full {
-            for row_b in table_b_data {
-                if matched_b_rows.contains(&(row_b as *const Row)) {
-                    continue;
-                }
-
+            for row_b in unmatched_rows {
                 let mut combined_row = vec![ptr::null(); table_a.tables.len()];
                 combined_row.push(row_b);
                 output_table.data.push(combined_row);
