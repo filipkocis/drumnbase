@@ -1,6 +1,6 @@
 use std::{ptr, collections::HashSet};
 
-use crate::{basics::{Table, Value, Row}, syntax::{context::Ctx, ast::{Node, Join, JoinType}}};
+use crate::{basics::{Table, Value, Row}, syntax::{context::Ctx, ast::{Node, Join, JoinType}}, auth::{RlsAction, action::TableAction, Authorize}};
 
 use super::Runner;
 
@@ -9,10 +9,13 @@ impl Runner {
         let database = self.database.read();
         let mut result = UnsafeJoinedTables::from_table(base_table);
 
+        base_table.authorize(&ctx.cluster_user(), TableAction::Select)?;
         for join in joins {
-            if database.get_table(&join.table).is_none() {
-                return Err(format!("Table '{}' not found", join.table))
-            }
+            let table = match database.get_table(&join.table) {
+                Some(table) => table,
+                None => return Err(format!("Table '{}' not found", join.table))
+            };
+            table.authorize(&ctx.cluster_user(), TableAction::Select)?;
         }
 
         for join in joins {
