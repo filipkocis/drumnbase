@@ -1,40 +1,37 @@
 use std::{ptr, collections::HashSet};
 
-use crate::{basics::{Table, Value, Row}, syntax::{context::Ctx, ast::Node}};
+use crate::{basics::{Table, Value, Row}, syntax::{context::Ctx, ast::{Node, Join, JoinType}}};
 
 use super::Runner;
 
 impl Runner {
-    pub fn perform_joins(&self, tables: &Vec<Table>, join: Vec<(String, Node)>, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
-        let mut result = UnsafeJoinedTables::from_table(&tables[0]);
-        println!("init len {:?}", result.data.len());
+    pub fn perform_joins(&self, base_table: &Table, joins: &Vec<Join>, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
+        let database = self.database.read();
+        let mut result = UnsafeJoinedTables::from_table(base_table);
 
-        for i in 1..tables.len() {
-            let current_table = &tables[i];
-            let join_type = &join[i - 1].0;
-            let join_condition = &join[i - 1].1;
+        for join in joins {
+            if database.get_table(&join.table).is_none() {
+                return Err(format!("Table '{}' not found", join.table))
+            }
+        }
 
-            result = self.apply_join(result, current_table, join_type, join_condition, ctx)?;
-            println!("after {} len {:?}", i, result.data.len());
+        for join in joins {
+            let current_table = database.get_table(&join.table).expect("Table should exist");
+
+            result = self.apply_join(result, current_table, &join.join_type, &join.on, ctx)?;
         }
 
         Ok(result)
     }
 
-    pub fn apply_join(&self, table_a: UnsafeJoinedTables, table_b: &Table, join_type: &str, condition: &Node, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
+    pub fn apply_join(&self, table_a: UnsafeJoinedTables, table_b: &Table, join_type: &JoinType, on: &Node, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
         let mut output_table = UnsafeJoinedTables::new();
-
-        match join_type {
-            "INNER" | "LEFT" | "RIGHT" | "FULL" => (),
-            _ => return Err(format!("Join type '{}' not supported", join_type))
-        }
-
         let mut matched_b_rows = HashSet::new();
 
         for row_a in table_a.data.iter() {
             let mut match_found = false;
             for row_b in table_b.data.iter() {
-                let condition_result = self.run(condition, &ctx)?;
+                let condition_result = self.run(on, &ctx)?;
                 if !matches!(condition_result, Some(Value::Boolean(true))) {
                     continue
                 }
@@ -45,19 +42,19 @@ impl Runner {
                 output_table.data.push(combined_row);
                 match_found = true;
 
-                if join_type == "FULL" || join_type == "RIGHT" {
+                if *join_type == JoinType::Full || *join_type == JoinType::Right {
                     matched_b_rows.insert(row_b as *const Row);
                 }
             }
 
-            if !match_found && (join_type == "LEFT" || join_type == "FULL") {
+            if !match_found && (*join_type == JoinType::Left || *join_type == JoinType::Full) {
                 let mut combined_row = row_a.clone();
                 combined_row.push(ptr::null());
                 output_table.data.push(combined_row);
             }
         }
 
-        if join_type == "RIGHT" || join_type == "FULL" {
+        if *join_type == JoinType::Right || *join_type == JoinType::Full {
             for row_b in table_b.data.iter() {
                 if matched_b_rows.contains(&(row_b as *const Row)) {
                     continue;
