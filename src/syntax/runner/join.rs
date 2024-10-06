@@ -31,6 +31,8 @@ impl Runner {
         for row_a in table_a.data.iter() {
             let mut match_found = false;
             for row_b in table_b.data.iter() {
+                if row_b.is_deleted() { continue }
+
                 let condition_result = self.run(on, &ctx)?;
                 if !matches!(condition_result, Some(Value::Boolean(true))) {
                     continue
@@ -56,6 +58,8 @@ impl Runner {
 
         if *join_type == JoinType::Right || *join_type == JoinType::Full {
             for row_b in table_b.data.iter() {
+                if row_b.is_deleted() { continue }
+
                 if matched_b_rows.contains(&(row_b as *const Row)) {
                     continue;
                 }
@@ -207,6 +211,7 @@ impl UnsafeJoinedTables {
 
         let mut rows = vec![];
         for row in table.data.iter() {
+            if row.is_deleted() { continue }
             rows.push(vec![row as *const Row]);
         }
         join_table.data = rows;
