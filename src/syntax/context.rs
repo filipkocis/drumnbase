@@ -18,6 +18,11 @@ pub struct RunnerContext<'a> {
     current_row: RefCell<Option<*const Row>>,
     current_column_map: Option<HashMap<String, usize>>,
 
+    // row representation of 'joined rows'
+    pub current_unsafe_row: RefCell<Vec<*const Row>>,
+    // key: (table_name, column_name) -> (table_index, column_index)
+    pub current_unsafe_column_map: RefCell<HashMap<(String, String), (usize, usize)>>,
+
     options: Rc<RunOptions>, // rc for easier cloning when scoping
     pub parent: Option<Ctx<'a>>,
 }
@@ -159,6 +164,9 @@ impl<'a> RunnerContext<'a> {
             current_column_map: None,
             options,
             parent: None,
+
+            current_unsafe_row: RefCell::new(Vec::new()),
+            current_unsafe_column_map: RefCell::new(HashMap::new()),
         }
     }
 
@@ -180,5 +188,23 @@ impl<'a> RunnerContext<'a> {
 
     pub fn is_schema(&self) -> bool {
         self.options.is_schema
+    }
+}
+
+impl<'a> RunnerContext<'a> {
+    pub fn get_from(&self, table: &str, column: &str) -> Result<&Value, String> {
+        let map = self.current_unsafe_column_map.borrow();
+        let key = (table.to_string(), column.to_string());
+
+        if let Some((table_index, column_index)) = map.get(&key) {
+            let joined_row = self.current_unsafe_row.borrow();
+            let unsafe_row = joined_row[*table_index];
+            let row = unsafe { &*unsafe_row };
+            let value = row.get(*column_index).unwrap();
+
+            return Ok(value)
+        }
+
+        Err(format!("Column '{}' not found in table '{}'", column, table))
     }
 }
