@@ -16,6 +16,9 @@ mod r#type;
 mod query;
 mod sdl;
 
+// experimental
+mod join;
+
 type RunnerResult = Result<Option<Value>, String>;
 
 enum BlockResult {
