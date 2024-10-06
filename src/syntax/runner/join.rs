@@ -1,15 +1,21 @@
 use std::{ptr, collections::HashSet};
 
-use crate::{basics::{Table, Value, Row}, syntax::{context::Ctx, ast::{Node, Join, JoinType}}, auth::{RlsAction, action::TableAction, Authorize}};
+use crate::{basics::{Table, Value, Row}, syntax::{context::{Ctx, RunnerContextFields}, ast::{Node, Join, JoinType}}, auth::{RlsAction, action::TableAction, Authorize}};
 
 use super::Runner;
 
 impl Runner {
+    /// Executes join operations on a base table
+    ///
+    /// Returns a joined table which should be used in where clause filtering
     pub fn perform_joins(&self, base_table: &Table, joins: &Vec<Join>, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
         let database = self.database.read();
-        let mut result = UnsafeJoinedTables::from_table(base_table);
+        let mut result = self.transform_table_into_joined(base_table, ctx)?;
 
+        // authorize base table
         base_table.authorize(&ctx.cluster_user(), TableAction::Select)?;
+
+        // check if all tables in joins exist, and authorize them
         for join in joins {
             let table = match database.get_table(&join.table) {
                 Some(table) => table,
@@ -18,6 +24,7 @@ impl Runner {
             table.authorize(&ctx.cluster_user(), TableAction::Select)?;
         }
 
+        // apply joins sequentially
         for join in joins {
             let current_table = database.get_table(&join.table).expect("Table should exist");
 
@@ -27,15 +34,31 @@ impl Runner {
         Ok(result)
     }
 
-    pub fn apply_join(&self, table_a: UnsafeJoinedTables, table_b: &Table, join_type: &JoinType, on: &Node, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
+    fn apply_join(&self, table_a: UnsafeJoinedTables, table_b: &Table, join_type: &JoinType, on: &Node, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
         let mut output_table = UnsafeJoinedTables::new();
         let mut matched_b_rows = HashSet::new();
+        let mut table_b_data = vec![];
+
+        let policies = table_b.police(&ctx.cluster_user(), RlsAction::Select);
 
         for row_a in table_a.data.iter() {
             let mut match_found = false;
             for row_b in table_b.data.iter() {
                 if row_b.is_deleted() { continue }
 
+                // check rls
+                ctx.set_row(row_b);
+                if !self.eval_policies(&policies, ctx)? {
+                    continue
+                }
+
+                if *join_type == JoinType::Right || *join_type == JoinType::Full {
+                    // Push rows which have passed all checks (rls, deleted), so that we do not
+                    // need to check them again in the bottom loop
+                    table_b_data.push(row_b);
+                }
+
+                // check if the join condition is true
                 match self.run(on, &ctx)? {
                     Some(Value::Boolean(true)) => (),
                     Some(Value::Boolean(false)) => continue,
@@ -61,9 +84,7 @@ impl Runner {
         }
 
         if *join_type == JoinType::Right || *join_type == JoinType::Full {
-            for row_b in table_b.data.iter() {
-                if row_b.is_deleted() { continue }
-
+            for row_b in table_b_data {
                 if matched_b_rows.contains(&(row_b as *const Row)) {
                     continue;
                 }
@@ -208,18 +229,35 @@ impl UnsafeJoinedTables {
             data: vec![],
         }
     }
+}
 
-    fn from_table(table: &Table) -> Self {
-        let mut join_table = Self::new();
+impl Runner {
+    /// Trasforms a table into a valid joined table
+    ///
+    /// # Usage
+    /// Returned table is used to perform joins on with other tables
+    ///
+    /// # Note
+    /// It performs checks for RLS policies and skips deleted rows
+    fn transform_table_into_joined(&self, table: &Table, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
+        let mut join_table = UnsafeJoinedTables::new();
         join_table.tables.push(table as *const Table);
-
         let mut rows = vec![];
+
+        let policies = table.police(&ctx.cluster_user(), RlsAction::Select);
         for row in table.data.iter() {
             if row.is_deleted() { continue }
+
+            // check rls
+            ctx.set_row(row);
+            if !self.eval_policies(&policies, ctx)? {
+                continue
+            }
+
             rows.push(vec![row as *const Row]);
         }
-        join_table.data = rows;
 
-        join_table
+        join_table.data = rows;
+        Ok(join_table)
     }
 }
