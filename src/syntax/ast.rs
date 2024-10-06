@@ -23,12 +23,28 @@ pub enum Query {
 #[derive(Debug, Clone)]
 pub struct SelectQuery {
     pub table: String,
+    pub joins: Vec<Join>,
     pub columns: Vec<Node>,
     pub where_clause: Option<Box<Node>>,
     pub order: Option<Box<Node>>,
     pub limit: Option<usize>,
     pub offset: Option<usize>,
     pub exclude: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Join {
+    pub table: String,
+    pub on: Node,
+    pub join_type: JoinType,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum JoinType {
+    Inner,
+    Left,
+    Right,
+    Full,
 }
 
 #[derive(Debug, Clone)]

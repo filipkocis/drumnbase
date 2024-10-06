@@ -319,6 +319,8 @@ impl Tokenizer {
             "true" => Some(Keyword::True),
             "false" => Some(Keyword::False),
             "null" => Some(Keyword::Null),
+            "on" => Some(Keyword::On),
+            "to" => Some(Keyword::To),
             _ => None
         };
 
@@ -345,6 +347,7 @@ impl Tokenizer {
         let query_keyword = match value {
             "query" => QueryKeyword::Query,
             "as" => QueryKeyword::As,
+            "join" => QueryKeyword::Join,
 
             "select" => QueryKeyword::Select,
             "insert" => QueryKeyword::Insert,

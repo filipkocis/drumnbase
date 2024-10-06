@@ -47,6 +47,7 @@ pub enum TokenKind {
 pub enum QueryKeyword {
     Query,
     As,
+    Join,
 
     Select,
     Insert,
@@ -108,6 +109,8 @@ pub enum Keyword {
     True,
     False,
     Null,
+    On,
+    To,
 }
 
 impl Keyword {
