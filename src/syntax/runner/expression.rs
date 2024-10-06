@@ -1,4 +1,4 @@
-use crate::{syntax::ast::{Expression, Node}, basics::Value};
+use crate::{syntax::ast::{Expression, Node, Literal}, basics::Value};
 
 use super::{Runner, Ctx, RunnerResult};
 
@@ -39,8 +39,8 @@ impl Runner {
     }
 
     fn eval_member(&self, object: &Box<Node>, member: &str, ctx: &Ctx) -> RunnerResult {
-        let object = self.run(object, ctx)?.ok_or("Object cannot be a statement with no return value")?;
-
+        // let object = self.run(object, ctx)?.ok_or("Object cannot be a statement with no return value")?;
+        //
         // TODO: Implement objects
         // if let Value::Object(object) = object {
         //     if let Some(value) = object.get(member) {
@@ -49,7 +49,18 @@ impl Runner {
         //
         //     return Err(format!("Member '{}' not found in object", member))
         // }
+        //
+        // Err(format!("Value of type {:?} cannot be accessed by member notation", self.get_type(&object)))
 
-        Err(format!("Value of type {:?} cannot be accessed by member notation", self.get_type(&object)))
+        // HINT: temporary implementation to add support in joins (e.g. "users.name")
+        let table = match **object {
+            Node::Literal(Literal::Identifier(ref identifier)) => identifier,
+            _ => return Err("Currently only identifiers (table names) are supported in member notation".to_string()) 
+        };
+
+        let value = ctx.get_from(table, member)?;
+        let value = value.clone();
+
+        Ok(Some(value))
     }
 }
