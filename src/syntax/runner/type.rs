@@ -3,7 +3,7 @@ use crate::{basics::{Value, value::NumericValue}, syntax::ast::Type};
 use super::Runner;
 
 impl Runner {
-    pub(super) fn check_type(&self, type_: &Type, value: &Value) -> bool {
+    pub fn check_type(&self, type_: &Type, value: &Value) -> bool {
         match (type_, value) {
             (Type::Int, Value::Numeric(NumericValue::IntI64(_))) => true,
             (Type::UInt, Value::Numeric(NumericValue::IntU64(_))) => true,
@@ -16,7 +16,7 @@ impl Runner {
         }
     }
 
-    pub(super) fn get_type(&self, value: &Value) -> Type {
+    pub fn get_type(&self, value: &Value) -> Type {
         match value {
             Value::Numeric(NumericValue::IntI64(_)) => Type::Int,
             Value::Numeric(NumericValue::IntU64(_)) => Type::UInt,

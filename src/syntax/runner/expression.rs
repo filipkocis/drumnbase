@@ -34,6 +34,6 @@ impl Runner {
             return Ok(Some(value))
         }
 
-        Err("Invalid index".to_string())
+        Err(format!("Object of type {:?} is not indexable", self.get_type(&object)))
     }
 }
