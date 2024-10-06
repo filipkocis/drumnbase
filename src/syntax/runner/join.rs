@@ -1,6 +1,6 @@
 use std::{ptr, collections::HashSet};
 
-use crate::{basics::{Table, Value, Row}, syntax::{context::{Ctx, RunnerContextFields}, ast::{Node, Join, JoinType}}, auth::{RlsAction, action::TableAction, Authorize}};
+use crate::{basics::{Table, Value, Row}, syntax::{context::{Ctx, RunnerContextFields, RunnerContextScope}, ast::{Node, Join, JoinType}}, auth::{RlsAction, action::TableAction, Authorize}};
 
 use super::Runner;
 
@@ -39,6 +39,8 @@ impl Runner {
         let mut matched_b_rows = HashSet::new();
         let mut table_b_data = vec![];
 
+        let column_map = table_b.get_column_map(&table_b.get_column_names()).unwrap();
+        let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
         let policies = table_b.police(&ctx.cluster_user(), RlsAction::Select);
 
         for row_a in table_a.data.iter() {
@@ -244,7 +246,10 @@ impl Runner {
         join_table.tables.push(table as *const Table);
         let mut rows = vec![];
 
+        let column_map = table.get_column_map(&table.get_column_names()).unwrap();
+        let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
         let policies = table.police(&ctx.cluster_user(), RlsAction::Select);
+
         for row in table.data.iter() {
             if row.is_deleted() { continue }
 
