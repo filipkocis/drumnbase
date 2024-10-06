@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::{syntax::token::{TokenKind, SDLKeyword}, basics::{Column, column::{ColumnType, NumericType, TextType, TimestampType}}, auth::{RlsPolicy, RlsAction}};
 
-use super::{token::{Token, Keyword, Symbol, Literal, Operator, QueryKeyword}, ast::{Node, Statement, Number, self, Expression, Type, SelectQuery, InsertQuery, UpdateQuery, DeleteQuery, CreateSDL}};
+use super::{token::{Token, Keyword, Symbol, Literal, Operator, QueryKeyword}, ast::{Node, Statement, Number, self, Expression, Type, SelectQuery, InsertQuery, UpdateQuery, DeleteQuery, CreateSDL, Join, JoinType}};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -901,11 +901,13 @@ impl Parser {
     }
 
     fn select_query(&mut self, table_name: String) -> Result<Node, ParserError> {
+        let joins = self.select_joins()?;
         self.expect(TokenKind::Query(QueryKeyword::Select))?;
 
         let mut parser_error = ParserError::empty();
         let mut query = SelectQuery {
             table: table_name,
+            joins,
             columns: Vec::new(),
             where_clause: None,
             order: None,
@@ -949,6 +951,52 @@ impl Parser {
         }
 
         Ok(Node::Query(ast::Query::Select(query)))
+    }
+
+    fn select_joins(&mut self) -> Result<Vec<Join>, ParserError> {
+        let mut parser_error = ParserError::empty();
+        let mut joins = Vec::new();
+
+        while let Some(token) = self.current() {
+            if token.kind != TokenKind::Query(QueryKeyword::Join) {
+                break
+            }
+            self.advance();
+
+            let join_type = self.current_token("join type or table name")?;
+            let join_type = match join_type.kind {
+                TokenKind::Identifier(ref value) => match value.as_str() {
+                    "inner" => { self.advance(); JoinType::Inner },
+                    "left" => { self.advance(); JoinType::Left },
+                    "right" => { self.advance(); JoinType::Right },
+                    "full" => { self.advance(); JoinType::Full },
+                    _ => JoinType::Inner,
+                },
+                _ => JoinType::Inner,
+            };
+
+            let table = self.string_or_identifier()
+                .or_else(|e| { parser_error.add(e); Err("") })
+                .unwrap_or("".to_string());
+
+            self.expect(TokenKind::Keyword(Keyword::On))
+                .or_else(|e| { parser_error.add(e); Err("") });
+
+            let on = self.expression()
+                .or_else(|e| { parser_error.extend(e); Err("") })
+                .unwrap_or(Node::Block(vec![]));
+
+
+            if parser_error.is_empty() {
+                joins.push(Join { table, on, join_type })
+            }
+        }
+
+        if !parser_error.is_empty() {
+            return Err(parser_error)
+        }
+
+        Ok(joins)
     }
 
     fn query_where(&mut self) -> Result<Box<Node>, ParserError> {
