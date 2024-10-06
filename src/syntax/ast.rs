@@ -119,8 +119,8 @@ pub enum Expression {
     Binary { left: Box<Node>, operator: Operator, right: Box<Node> },
     Unary { operator: Operator, right: Box<Node> },
     Call { name: String, arguments: Vec<Node> },
-    Index { name: String, index: Box<Node> },
-    Member { name: String, member: String },
+    Index { object: Box<Node>, index: Box<Node> },
+    Member { object: Box<Node>, member: String },
     Literal(Literal),
     Dereference(Box<Node>),
 }
