@@ -184,11 +184,23 @@ impl Runner {
                 let row_b = joined_tables.data.get(j).expect("Cannot get row with row_index")
                     .get(order.0).expect("Cannot get joined row with order table index");
 
-                let row_a = unsafe { &*(*row_a) };
-                let row_b = unsafe { &*(*row_b) };
+                let a = {
+                    if row_a.is_null() {
+                        &Value::Null
+                    } else {
+                        let row_a = unsafe { &*(*row_a) };
+                        row_a.get(order.1).expect("Cannot get row value with order index")
+                    }
+                };
 
-                let a = row_a.get(order.1).expect("Cannot get row value with order index");
-                let b = row_b.get(order.1).expect("Cannot get row value with order index");
+                let b = {
+                    if row_b.is_null() {
+                        &Value::Null
+                    } else {
+                        let row_b = unsafe { &*(*row_b) };
+                        row_b.get(order.1).expect("Cannot get row value with order index")
+                    }
+                };
                 
                 if order.2 { 
                     a.partial_cmp(b).expect("Cannot compare values")
