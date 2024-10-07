@@ -36,6 +36,7 @@ impl Runner {
 
     fn apply_join(&self, table_a: UnsafeJoinedTables, table_b: &Table, join_type: &JoinType, on: &Node, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
         let mut output_table = UnsafeJoinedTables::new();
+        let mut matched_rows = HashSet::new();
         let mut unmatched_rows = HashSet::new();
 
         let column_map = table_b.get_column_map(&table_b.get_column_names()).unwrap();
@@ -58,7 +59,11 @@ impl Runner {
 
                 // check if the join condition is true
                 match self.run(on, &ctx)? {
-                    Some(Value::Boolean(true)) => (),
+                    Some(Value::Boolean(true)) => {
+                        if *join_type == JoinType::Right || *join_type == JoinType::Full {
+                            matched_rows.insert(row_b as *const Row);
+                        }
+                    },
                     Some(Value::Boolean(false)) => {
                         if *join_type == JoinType::Right || *join_type == JoinType::Full {
                             // Push rows which have passed all checks (rls, deleted), so that we do not
@@ -86,6 +91,10 @@ impl Runner {
 
         if *join_type == JoinType::Right || *join_type == JoinType::Full {
             for row_b in unmatched_rows {
+                if matched_rows.contains(&row_b) {
+                    continue
+                }
+
                 let mut combined_row = vec![ptr::null(); table_a.tables.len()];
                 combined_row.push(row_b);
                 output_table.data.push(combined_row);
