@@ -613,7 +613,15 @@ impl Parser {
                 },
                 TokenKind::Symbol(Symbol::Period) => {
                     self.advance();
-                    let property = self.identifier_name()?;
+
+                    let property = if matches!(self.current(), Some(Token { kind: TokenKind::Operator(Operator::Multiply), .. })) {
+                        // * is allowed in select queries
+                        self.advance();
+                        "*".to_string()
+                    } else {
+                        self.identifier_name()?
+                    };
+
                     current = Node::Expression(Expression::Member { object: Box::new(current), member: property });
                 },
                 _ => break
