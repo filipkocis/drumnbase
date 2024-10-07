@@ -211,7 +211,6 @@ impl Runner {
         // build result set
         // let result_row_capacity = column_names.len() + special_columns.len();
         let result_row_capacity = selected_columns.len() + special_selected_columns.len();
-        println!("RRC: {}", result_row_capacity);
         let mut result_set = Vec::with_capacity(row_indexes.len());
         for row_index in row_indexes {
             let joined_row = joined_tables.data.get(row_index).expect("Cannot get joined row with row_index");
