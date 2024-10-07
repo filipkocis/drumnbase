@@ -927,13 +927,12 @@ impl Parser {
     }
 
     fn select_query(&mut self, table_name: String) -> Result<Node, ParserError> {
-        let joins = self.select_joins()?;
         self.expect(TokenKind::Query(QueryKeyword::Select))?;
 
         let mut parser_error = ParserError::empty();
         let mut query = SelectQuery {
             table: table_name,
-            joins,
+            joins: Vec::new(),
             columns: Vec::new(),
             where_clause: None,
             order: None,
@@ -960,6 +959,8 @@ impl Parser {
                 _ => Err(self.expected("column name"))?
             }
         }
+
+        query.joins = self.select_joins()?;
 
         while let Some(token) = self.current() {
             match token.kind {
