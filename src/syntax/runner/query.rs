@@ -116,102 +116,12 @@ impl Runner {
             }
         }
 
-
-        // // (i, col) -> i is the index of the col in the result set, col is the value
-        // let mut special_columns = vec![];
-        // let mut column_names = select.columns.iter().enumerate().filter_map(|(i, node)| {
-        //     match node {
-        //         Node::Literal(literal) => match literal {
-        //             Literal::Identifier(n) if &*n == "*" => { special_columns.push((i, node)); None },
-        //             Literal::Identifier(name) => Some(name),
-        //             _ => { special_columns.push((i, node)); None }
-        //         },
-        //         _ => { special_columns.push((i, node)); None }
-        //     }
-        // }).collect::<Vec<_>>();
-
-        // // check if columns exist in the table
-        // for name in &column_names {
-        //     if table.get_column(name).is_none() {
-        //         return Err(format!("Column '{}' does not exist in table '{}' in database '{}'", 
-        //                 name, table.name, database.name))
-        //     } 
-        // }
-
-        // // handle special 'select all' column
-        // let column_star_op = special_columns.iter()
-        //     .position(|(_, node)| match node {
-        //         Node::Literal(Literal::Identifier(name)) => name == "*",
-        //         _ => false
-        //     });
-        // if let Some(i) = column_star_op {
-        //     let star_op = special_columns.remove(i);
-        //     let star_op_i = star_op.0 - i;
-        //
-        //     // get all columns which are not in column_names
-        //     let columns = table.columns.iter().filter_map(|col| {
-        //         if !column_names.iter().any(|name| *name == &col.name) { 
-        //             Some(&col.name) 
-        //         }
-        //         else { None }
-        //     }).collect::<Vec<_>>();
-        //
-        //     // insert columns in place of star_op from special_columns in column_names
-        //     for (i, name) in columns.iter().enumerate() {
-        //         column_names.insert(star_op_i + i, name);
-        //     }
-        //
-        //     // shift indexes in special_columns
-        //     special_columns.iter_mut().for_each(|(i, _)| {
-        //         if *i > star_op_i {
-        //             *i += columns.len() - 1;
-        //         }
-        //     });
-        // }
-
-        // // map column names to (i, name) where i is the index of the column in the table
-        // // filter out excluded columns
-        // let column_names = column_names.iter().enumerate().filter_map(|(i, name)| {
-        //     if let Some(exclude) = &select.exclude {
-        //         // skip column if it is in exclusion list
-        //         if exclude.iter().any(|ex| ex == *name) { 
-        //             // shift indexes in special_columns
-        //             special_columns.iter_mut().for_each(|(j, _)| {
-        //                 if *j > i { *j -= 1 }
-        //             });
-        //             return None
-        //         }
-        //     }
-        //     
-        //     table.columns.iter().position(|col| col.name == **name)
-        //         .map(|i| (i, *name))
-        // }).collect::<Vec<_>>();
-
-        // // evaluate where clause on each row
-        // let policies = table.police(&ctx.cluster_user(), RlsAction::Select);
-        // let mut row_indexes = vec![];
-        // for (i, row) in table.data.iter().enumerate() {
-        //     if row.is_deleted() { continue }
-        //
-        //     ctx.set_row(row);
-        //
-        //     // check rls
-        //     if !self.eval_policies(&policies, ctx)? {
-        //         continue
-        //     }
-        //
-        //     let where_clause_result = match &select.where_clause {
-        //         Some(node) => self.run(node, ctx),
-        //         None => Ok(Some(Value::Boolean(true)))
-        //     };
-        //
-        //     match where_clause_result {
-        //         Ok(Some(Value::Boolean(true))) => row_indexes.push(i),
-        //         Ok(Some(Value::Boolean(false))) => (),
-        //         Ok(_) => return Err("Where clause must return a boolean value".to_string()),
-        //         Err(err) => return Err(err)
-        //     };
-        // }
+        // TODO: update index in special columns
+        // Remove excluded columns
+        if let Some(exclude) = &select.exclude {
+            let exclude = exclude.iter().map(|name| table.get_column_index(name)).collect::<Result<Vec<_>, _>>()?;
+            selected_columns.retain(|(ti, ci)| !exclude.iter().any(|i| *ci == *i && *ti == 0));
+        }
         
         let null_base_row = Row::from_values(vec![Value::Null; table.columns.len()]);
         
