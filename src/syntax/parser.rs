@@ -762,21 +762,18 @@ impl Parser {
     fn identifier(&mut self) -> Result<Node, ParserError> {
         let identifier = self.identifier_name()?;
 
-        match self.current() {
+        let node = match self.current() {
             Some(token) => match token.kind {
                 TokenKind::Symbol(Symbol::LeftParenthesis) => {
                     let arguments = self.arguments()?;
-                    Ok(Node::Expression(Expression::Call { name: identifier, arguments }))
+                    Node::Expression(Expression::Call { name: identifier, arguments })
                 },
-                // TokenKind::Symbol(Symbol::Period) => {
-                //     self.advance();
-                //     let property = self.identifier()?;
-                //     Ok(Node::Member { name: identifier, member: Box::new(property) })
-                // },
-                _ => Ok(Node::Literal(ast::Literal::Identifier(identifier)))
+                _ => Node::Literal(ast::Literal::Identifier(identifier))
             },
-            None => Ok(Node::Literal(ast::Literal::Identifier(identifier)))
-        }
+            None => Node::Literal(ast::Literal::Identifier(identifier))
+        };
+
+        self.encapsulate_index_or_member(node)
     }
 
     fn arguments(&mut self) -> Result<Vec<Node>, ParserError> {
