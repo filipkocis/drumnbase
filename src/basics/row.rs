@@ -34,6 +34,13 @@ impl Row {
         }
     }
 
+    pub fn from_values(values: Vec<Value>) -> Row {
+        Row {
+            values,
+            flags: EMPTY_FLAGS,
+        }
+    }
+
     pub fn with_flags(flags: u8) -> Row {
         let mut row = Row::new();
         row.flags = flags;
