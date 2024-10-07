@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{syntax::{ast::{Query, InsertQuery, SelectQuery, UpdateQuery, DeleteQuery, Node, Literal, Operator, Expression}, context::{RunnerContextScope, RunnerContextFields}}, basics::{Value, Row, value::NumericValue}, auth::{Authorize, action::TableAction, RlsAction}};
 
 use super::{Runner, Ctx, RunnerResult};
@@ -43,104 +45,197 @@ impl Runner {
             None => return Err(format!("Table '{}' does not exist in database '{}'", select.table, database.name))
         };
 
-        table.authorize(&ctx.cluster_user(), TableAction::Select)?;
+        // Perform joins on base table, it also runs authorization checks and rls checks
+        let joined_tables = self.perform_joins(table, &select.joins, ctx)?;
 
         let column_map = table.get_column_map(&table.get_column_names()).unwrap();
         let ctx = &Ctx::scoped_with(ctx.clone(), column_map);
+        ctx.set_joined_tables(&joined_tables.tables);
 
-        // (i, col) -> i is the index of the col in the result set, col is the value
-        let mut special_columns = vec![];
-        let mut column_names = select.columns.iter().enumerate().filter_map(|(i, node)| {
+        // Prepare selected columns
+        let mut special_selected_columns = vec![];
+        // one entry is (table_index, column_index)
+        let mut selected_columns = vec![];
+        // one entry is (selected_at, table_index)
+        let mut select_alls = vec![];
+        for (selected_i, node) in select.columns.iter().enumerate() {
             match node {
-                Node::Literal(literal) => match literal {
-                    Literal::Identifier(n) if &*n == "*" => { special_columns.push((i, node)); None },
-                    Literal::Identifier(name) => Some(name),
-                    _ => { special_columns.push((i, node)); None }
+                Node::Literal(Literal::Identifier(name)) => {
+                    if name == "*" {
+                        // reverse order since '*' expansion is also reversed
+                        for table_index in (0..joined_tables.tables.len()).rev() {
+                            select_alls.push((selected_i, table_index))
+                        }
+                    } else {
+                        let table_index = 0; // base table 
+                        let column_index = table.get_column_index(name)?;
+                        selected_columns.push((table_index, column_index));
+                    }
                 },
-                _ => { special_columns.push((i, node)); None }
-            }
-        }).collect::<Vec<_>>();
+                Node::Expression(Expression::Member { object, member }) => {
+                    let table_name = match **object {
+                        Node::Literal(Literal::Identifier(ref name)) => name,
+                        _ => return Err("Cannot select member from non-identifier column name".to_string())
+                    };
 
-        // check if columns exist in the table
-        for name in &column_names {
-            if table.get_column(name).is_none() {
-                return Err(format!("Column '{}' does not exist in table '{}' in database '{}'", 
-                        name, table.name, database.name))
-            } 
+                    let table_index = joined_tables.tables.iter().position(|t| {
+                        let t = unsafe { &*(*t) };
+                        t.name == *table_name
+                    });
+                    let table_index = match table_index {
+                        Some(i) => i,
+                        None => return Err(format!("Table '{}' not found in joined tables", table_name))
+                    };
+
+                    if member == "*" {
+                        select_alls.push((selected_i, table_index))
+                    } else {
+                        let table = unsafe { &*joined_tables.tables[table_index] };
+                        let column_index = table.get_column_index(member)?;
+                        selected_columns.push((table_index, column_index))
+                    }
+                }
+                _ => { special_selected_columns.push((selected_i, node)); }
+            }
         }
 
-        // handle special 'select all' column
-        let column_star_op = special_columns.iter()
-            .position(|(_, node)| match node {
-                Node::Literal(Literal::Identifier(name)) => name == "*",
-                _ => false
-            });
-        if let Some(i) = column_star_op {
-            let star_op = special_columns.remove(i);
-            let star_op_i = star_op.0 - i;
+        // TODO: update index in special columns
+        // Prepare selected columns with select all
+        for (selected_at, table_index) in select_alls {
+            let table = unsafe { &*joined_tables.tables[table_index] };
 
-            // get all columns which are not in column_names
-            let columns = table.columns.iter().filter_map(|col| {
-                if !column_names.iter().any(|name| *name == &col.name) { 
-                    Some(&col.name) 
-                }
-                else { None }
+            let missing_columns = (0..table.columns.len()).filter_map(|i| {
+                if !selected_columns.iter().any(|(ti, ci)| *ti == table_index && *ci == i) {
+                    Some((table_index, i))
+                } else { None }
             }).collect::<Vec<_>>();
 
-            // insert columns in place of star_op from special_columns in column_names
-            for (i, name) in columns.iter().enumerate() {
-                column_names.insert(star_op_i + i, name);
+            // reversed order so we can insert at 'i' and keep correct column order
+            for missing in missing_columns.iter().rev() {
+                selected_columns.insert(selected_at, *missing);
             }
-
-            // shift indexes in special_columns
-            special_columns.iter_mut().for_each(|(i, _)| {
-                if *i > star_op_i {
-                    *i += columns.len() - 1;
-                }
-            });
         }
 
-        // map column names to (i, name) where i is the index of the column in the table
-        // filter out excluded columns
-        let column_names = column_names.iter().enumerate().filter_map(|(i, name)| {
-            if let Some(exclude) = &select.exclude {
-                // skip column if it is in exclusion list
-                if exclude.iter().any(|ex| ex == *name) { 
-                    // shift indexes in special_columns
-                    special_columns.iter_mut().for_each(|(j, _)| {
-                        if *j > i { *j -= 1 }
-                    });
-                    return None
-                }
-            }
-            
-            table.columns.iter().position(|col| col.name == **name)
-                .map(|i| (i, *name))
-        }).collect::<Vec<_>>();
 
-        // evaluate where clause on each row
-        let policies = table.police(&ctx.cluster_user(), RlsAction::Select);
+        // // (i, col) -> i is the index of the col in the result set, col is the value
+        // let mut special_columns = vec![];
+        // let mut column_names = select.columns.iter().enumerate().filter_map(|(i, node)| {
+        //     match node {
+        //         Node::Literal(literal) => match literal {
+        //             Literal::Identifier(n) if &*n == "*" => { special_columns.push((i, node)); None },
+        //             Literal::Identifier(name) => Some(name),
+        //             _ => { special_columns.push((i, node)); None }
+        //         },
+        //         _ => { special_columns.push((i, node)); None }
+        //     }
+        // }).collect::<Vec<_>>();
+
+        // // check if columns exist in the table
+        // for name in &column_names {
+        //     if table.get_column(name).is_none() {
+        //         return Err(format!("Column '{}' does not exist in table '{}' in database '{}'", 
+        //                 name, table.name, database.name))
+        //     } 
+        // }
+
+        // // handle special 'select all' column
+        // let column_star_op = special_columns.iter()
+        //     .position(|(_, node)| match node {
+        //         Node::Literal(Literal::Identifier(name)) => name == "*",
+        //         _ => false
+        //     });
+        // if let Some(i) = column_star_op {
+        //     let star_op = special_columns.remove(i);
+        //     let star_op_i = star_op.0 - i;
+        //
+        //     // get all columns which are not in column_names
+        //     let columns = table.columns.iter().filter_map(|col| {
+        //         if !column_names.iter().any(|name| *name == &col.name) { 
+        //             Some(&col.name) 
+        //         }
+        //         else { None }
+        //     }).collect::<Vec<_>>();
+        //
+        //     // insert columns in place of star_op from special_columns in column_names
+        //     for (i, name) in columns.iter().enumerate() {
+        //         column_names.insert(star_op_i + i, name);
+        //     }
+        //
+        //     // shift indexes in special_columns
+        //     special_columns.iter_mut().for_each(|(i, _)| {
+        //         if *i > star_op_i {
+        //             *i += columns.len() - 1;
+        //         }
+        //     });
+        // }
+
+        // // map column names to (i, name) where i is the index of the column in the table
+        // // filter out excluded columns
+        // let column_names = column_names.iter().enumerate().filter_map(|(i, name)| {
+        //     if let Some(exclude) = &select.exclude {
+        //         // skip column if it is in exclusion list
+        //         if exclude.iter().any(|ex| ex == *name) { 
+        //             // shift indexes in special_columns
+        //             special_columns.iter_mut().for_each(|(j, _)| {
+        //                 if *j > i { *j -= 1 }
+        //             });
+        //             return None
+        //         }
+        //     }
+        //     
+        //     table.columns.iter().position(|col| col.name == **name)
+        //         .map(|i| (i, *name))
+        // }).collect::<Vec<_>>();
+
+        // // evaluate where clause on each row
+        // let policies = table.police(&ctx.cluster_user(), RlsAction::Select);
+        // let mut row_indexes = vec![];
+        // for (i, row) in table.data.iter().enumerate() {
+        //     if row.is_deleted() { continue }
+        //
+        //     ctx.set_row(row);
+        //
+        //     // check rls
+        //     if !self.eval_policies(&policies, ctx)? {
+        //         continue
+        //     }
+        //
+        //     let where_clause_result = match &select.where_clause {
+        //         Some(node) => self.run(node, ctx),
+        //         None => Ok(Some(Value::Boolean(true)))
+        //     };
+        //
+        //     match where_clause_result {
+        //         Ok(Some(Value::Boolean(true))) => row_indexes.push(i),
+        //         Ok(Some(Value::Boolean(false))) => (),
+        //         Ok(_) => return Err("Where clause must return a boolean value".to_string()),
+        //         Err(err) => return Err(err)
+        //     };
+        // }
+        
+        let null_base_row = Row::from_values(vec![Value::Null; table.columns.len()]);
+        
+        // evaluate where clause on each joined row
         let mut row_indexes = vec![];
-        for (i, row) in table.data.iter().enumerate() {
-            if row.is_deleted() { continue }
-
-            ctx.set_row(row);
-
-            // check rls
-            if !self.eval_policies(&policies, ctx)? {
-                continue
+        for (i, joined_row) in joined_tables.data.iter().enumerate() {
+            ctx.set_joined_row(joined_row);
+            let unsafe_row = joined_row.get(0).expect("Joined row has no base table row");
+            if unsafe_row.is_null() {
+                ctx.set_row(&null_base_row);
+            } else {
+                let row = unsafe { &*(*unsafe_row) };
+                ctx.set_row(row);
             }
 
             let where_clause_result = match &select.where_clause {
-                Some(node) => self.run(node, ctx),
-                None => Ok(Some(Value::Boolean(true)))
+                Some(node) => self.run(node, ctx)?,
+                None => Some(Value::Boolean(true))
             };
 
             match where_clause_result {
-                Ok(Some(Value::Boolean(true))) => row_indexes.push(i),
-                Ok(Some(Value::Boolean(false))) => (),
-                Ok(_) => return Err("Where clause must return a boolean value".to_string()),
-                Err(err) => return Err(err)
+                Some(Value::Boolean(true)) => row_indexes.push(i),
+                Some(Value::Boolean(false)) => (),
+                _ => return Err("Where clause must return a boolean value".to_string()),
             };
         }
 
@@ -164,21 +259,28 @@ impl Runner {
                         return Err(format!("Column '{}' does not exist in table '{}'", name, table.name))
                     }
 
-                    let i = table.get_column_index(name).unwrap();
+                    let column_i = table.get_column_index(name).unwrap();
+                    let table_i = 0;
 
-                    (i, ascending)
+                    (table_i, column_i, ascending)
                 },
                 _ => return Err("Order must be a unary expression".to_string())
             };
 
             // sort row indexes by order column
             row_indexes.sort_by(|&i, &j| {
-                let a = table.data.get(i).expect("Cannot get row with row_index")
-                    .get(order.0).expect("Cannot get row value with order index");
-                let b = table.data.get(j).expect("Cannot get row with row_index")
-                    .get(order.0).expect("Cannot get row value with order index");
+                let row_a = joined_tables.data.get(i).expect("Cannot get row with row_index")
+                    .get(order.0).expect("Cannot get joined row with order table index");
+                let row_b = joined_tables.data.get(j).expect("Cannot get row with row_index")
+                    .get(order.0).expect("Cannot get joined row with order table index");
+
+                let row_a = unsafe { &*(*row_a) };
+                let row_b = unsafe { &*(*row_b) };
+
+                let a = row_a.get(order.1).expect("Cannot get row value with order index");
+                let b = row_b.get(order.1).expect("Cannot get row value with order index");
                 
-                if order.1 { 
+                if order.2 { 
                     a.partial_cmp(b).expect("Cannot compare values")
                 } else { 
                     b.partial_cmp(a).expect("Cannot compare values") 
@@ -197,24 +299,34 @@ impl Runner {
         }
 
         // build result set
-        let result_row_capacity = column_names.len() + special_columns.len();
+        // let result_row_capacity = column_names.len() + special_columns.len();
+        let result_row_capacity = selected_columns.len() + special_selected_columns.len();
+        println!("RRC: {}", result_row_capacity);
         let mut result_set = Vec::with_capacity(row_indexes.len());
         for row_index in row_indexes {
-            let row = table.data.get(row_index).expect("Cannot get row with row_index");
+            let joined_row = joined_tables.data.get(row_index).expect("Cannot get joined row with row_index");
             let mut result_row = Vec::with_capacity(result_row_capacity);
 
             // evaluate columns
-            for (i, _) in &column_names {
-                result_row.push(row.get(*i).unwrap().clone());
+            for (ti, ci) in &selected_columns {
+                let unsafe_row = joined_row.get(*ti).expect("Cannot get row with table index");
+                if unsafe_row.is_null() {
+                    result_row.push(Value::Null);
+                    continue
+                }
+
+                let row = unsafe { &*(*unsafe_row) };
+                let value = row.get(*ci).expect("Cannot get row value with column index");
+                result_row.push(value.clone());
             }
 
             // set row variables to be used in special columns
-            if special_columns.len() > 0 {
-                ctx.set_row(row);
+            if special_selected_columns.len() > 0 {
+                ctx.set_joined_row(joined_row);
             }
 
             // evaluate special columns
-            for (i, node) in &special_columns {
+            for (i, node) in &special_selected_columns {
                 let value = self.run(node, &ctx)?.expect("Special column must return a value");
                 result_row.insert(*i, value)
             }
