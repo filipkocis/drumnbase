@@ -10,7 +10,6 @@ impl Runner {
     /// Returns a joined table which should be used in where clause filtering
     pub fn perform_joins(&self, base_table: &Table, joins: &Vec<Join>, ctx: &Ctx) -> Result<UnsafeJoinedTables, String> {
         let database = self.database.read();
-        let mut result = self.transform_table_into_joined(base_table, ctx)?;
 
         // authorize base table
         base_table.authorize(&ctx.cluster_user(), TableAction::Select)?;
@@ -25,6 +24,7 @@ impl Runner {
         }
 
         // apply joins sequentially
+        let mut result = self.transform_table_into_joined(base_table, ctx)?;
         for join in joins {
             let current_table = database.get_table(&join.table).expect("Table should exist");
 
@@ -65,6 +65,7 @@ impl Runner {
                             // need to check them again in the bottom loop
                             unmatched_rows.insert(row_b as *const Row);
                         }
+                        continue
                     },
                     _ => return Err("Join condition must return a boolean value".to_string()),
                 };
